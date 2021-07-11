@@ -1,6 +1,6 @@
 package com.tuannh.phantom.db.internal;
 
-public class PhantomDBMetadata {
+public class DBMetadata {
     /**
      * checksum(4), version(1), is_open(1), io_error(1), max_file_size(4)
      */

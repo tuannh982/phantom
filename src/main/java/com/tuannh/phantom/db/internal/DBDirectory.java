@@ -1,6 +1,7 @@
 package com.tuannh.phantom.db.internal;
 
 import com.tuannh.phantom.commons.io.FileUtils;
+import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
 
 import java.io.Closeable;
 import java.io.File;
@@ -9,12 +10,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class PhantomDBDirectory implements Closeable {
+public class DBDirectory implements Closeable {
     private final File dir;
     private final FileChannel dirChannel;
     private final Path path;
 
-    public PhantomDBDirectory(File dir) throws IOException {
+    public DBDirectory(File dir) throws IOException {
         FileUtils.mkdir(dir);
         this.dir = dir;
         FileChannel channel = null;
@@ -28,18 +29,15 @@ public class PhantomDBDirectory implements Closeable {
     }
 
     public File[] dataFiles() {
-        // TODO
-        return null;
+        return DirectoryUtils.dataFiles(dir);
     }
 
     public File[] indexFiles() {
-        // TODO
-        return null;
+        return DirectoryUtils.indexFiles(dir);
     }
 
     public File[] tombstoneFiles() {
-        // TODO
-        return null;
+        return DirectoryUtils.tombstoneFiles(dir);
     }
 
     public Path path() {
