@@ -9,7 +9,7 @@ import java.io.IOException;
 public class PhantomDB implements DB {
     private final PhantomDBInternal internal;
 
-    public PhantomDB(File dir, PhantomDBOptions options) {
+    public PhantomDB(File dir, PhantomDBOptions options) throws IOException {
         if (!dir.isDirectory()) {
             throw new AssertionError(dir.getName() + " is not a directory");
         }

@@ -4,8 +4,13 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.regex.Pattern;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -28,7 +33,7 @@ public class FileUtils {
         if (f.isDirectory()) {
             File[] files = f.listFiles();
             if (files != null) {
-                for (File file: files) {
+                for (File file : files) {
                     del(file);
                 }
             }
@@ -46,6 +51,15 @@ public class FileUtils {
             }
         } else {
             throw new IOException(dir.getName() + " is not a directory");
+        }
+    }
+
+    public static void copy(Path src, Path dest) throws IOException {
+        try (
+                FileChannel srcChannel = FileChannel.open(src, StandardOpenOption.READ);
+                FileChannel destChannel = FileChannel.open(dest, StandardOpenOption.WRITE)
+        ) {
+            srcChannel.transferTo(0, srcChannel.size(), destChannel);
         }
     }
 }

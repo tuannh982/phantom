@@ -13,10 +13,10 @@ import java.util.regex.Pattern;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DirectoryUtils {
-    private static final Pattern DATA_FILE_PATTERN = Pattern.compile("([0-9]+)\\.datac?");
-    private static final Pattern INDEX_FILE_PATTERN = Pattern.compile("([0-9]+)\\.index");
-    private static final Pattern TOMBSTONE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.tombstone");
-    private static final Pattern STORAGE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.[a-z]+");
+    public static final Pattern DATA_FILE_PATTERN = Pattern.compile("([0-9]+)\\.datac?");
+    public static final Pattern INDEX_FILE_PATTERN = Pattern.compile("([0-9]+)\\.index");
+    public static final Pattern TOMBSTONE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.tombstone");
+    public static final Pattern STORAGE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.[a-z]+");
 
     // all storage file name is number
     public static int fileId(File file, Pattern pattern) {
