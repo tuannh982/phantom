@@ -6,6 +6,7 @@ import lombok.*;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
+@Getter
 public class Record {
     /**
      * Header
@@ -20,23 +21,23 @@ public class Record {
     private static final int SEQUENCE_NUMBER_OFFSET = 1 + 1 + 4;
     private static final int CHECKSUM_OFFSET = 1 + 1 + 4 + 8;
 
-    @Getter
     private final Header header;
-    @Getter
     private final byte[] key;
-    @Getter
     private final byte[] value;
+    private final int recordSize;
 
     public Record(byte[] key, byte[] value) {
         this.key = key;
         this.value = value;
         this.header = new Header(Versions.DATA_FILE_VERSION, (byte) key.length, value.length, -1, 0);
+        recordSize = key.length + value.length + HEADER_SIZE;
     }
 
     public Record(byte[] key, byte[] value, Header header) {
         this.key = key;
         this.value = value;
         this.header = header;
+        recordSize = key.length + value.length + HEADER_SIZE;
     }
 
     private long checksum(ByteBuffer buffer) {
