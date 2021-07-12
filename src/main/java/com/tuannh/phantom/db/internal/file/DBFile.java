@@ -3,15 +3,18 @@ package com.tuannh.phantom.db.internal.file;
 import com.tuannh.phantom.commons.io.FileUtils;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
-import com.tuannh.phantom.db.internal.Record;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 @Slf4j
 @Getter
@@ -62,12 +65,33 @@ public class DBFile implements Closeable {
         return new DBFile(fileId, dbDirectory, dbOptions, compacted, file, indexFile, channel);
     }
 
-    public static DBFile open(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted) throws IOException {
+    @SuppressWarnings("java:S2095")
+    public static DBFile openForRead(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted) throws IOException {
         String fileExtension = compacted ? COMPACT_FILE_EXTENSION : DATA_FILE_EXTENSION;
         File file = dbDirectory.path().resolve(fileId + fileExtension).toFile();
-        FileChannel channel = new RandomAccessFile(file, "rw").getChannel();
+        FileChannel channel = new RandomAccessFile(file, "r").getChannel();
         IndexFile indexFile = IndexFile.open(fileId, dbDirectory, dbOptions);
         return new DBFile(fileId, dbDirectory, dbOptions, compacted, file, indexFile, channel);
+    }
+
+    public DBFile repairAndOpenForRead() throws IOException {
+        DBFile repairFile = createRepairFile(fileId, dbDirectory, dbOptions, compacted);
+        Iterator<Record> iterator = iterator();
+        while (iterator.hasNext()) {
+            Record entry = iterator.next();
+            if (entry == null) { // no need to verify checksum
+                break;
+            }
+            repairFile.write(entry);
+        }
+        repairFile.flushToDisk();
+        repairFile.indexFile.flushToDisk();
+        Files.move(repairFile.indexFile.path(), indexFile.path(), REPLACE_EXISTING, ATOMIC_MOVE);
+        Files.move(repairFile.path(), path(), REPLACE_EXISTING, ATOMIC_MOVE);
+        dbDirectory.sync();
+        repairFile.close();
+        close();
+        return openForRead(fileId, dbDirectory, dbOptions, compacted);
     }
 
     @SuppressWarnings({"java:S2095", "java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
