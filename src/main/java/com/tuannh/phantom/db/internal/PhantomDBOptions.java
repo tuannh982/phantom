@@ -9,5 +9,6 @@ import lombok.Getter;
 @Builder
 public class PhantomDBOptions {
     private int fixedKeySize;
+    private int dataFlushThreshold;
     private final Hasher hasher = new Murmur3();
 }

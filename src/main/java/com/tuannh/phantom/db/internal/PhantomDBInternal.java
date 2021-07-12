@@ -3,6 +3,7 @@ package com.tuannh.phantom.db.internal;
 import com.tuannh.phantom.commons.concurrent.RLock;
 import com.tuannh.phantom.commons.io.FileUtils;
 import com.tuannh.phantom.db.DBException;
+import com.tuannh.phantom.db.index.InMemoryIndex;
 import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
 import com.tuannh.phantom.offheap.hashtable.KeyBuffer;
 import com.tuannh.phantom.offheap.hashtable.hash.Hasher;
@@ -14,8 +15,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class PhantomDBInternal implements Closeable {
+    // files
     private final DBDirectory dbDirectory;
+    // index
+    private InMemoryIndex inMemoryIndex;
+    // lock
     private final RLock writeLock;
+    // misc
     private final Hasher hasher;
 
     public PhantomDBInternal(File dir, PhantomDBOptions options) throws IOException {
@@ -29,7 +35,18 @@ public class PhantomDBInternal implements Closeable {
         return new byte[0]; // TODO
     }
 
-    public boolean put(byte[] key, byte[] value) throws DBException {
+    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException {
+        boolean rlock = writeLock.lock();
+        try {
+            KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));
+            // TODO
+        } finally {
+            writeLock.release(rlock);
+        }
+        return false; // TODO
+    }
+
+    public boolean replace(byte[] key, byte[] value) throws DBException {
         boolean rlock = writeLock.lock();
         try {
             KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));

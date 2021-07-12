@@ -21,8 +21,12 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public class DBMetadata {
     private static final String METADATA_FILENAME = "METADATA";
     private static final int METADATA_SIZE = 1 + 1 + 1 + 4 + 4; // version(1), is_open(1), io_error(1), max_file_size(4), checksum(4)
-    private static final int CHECKSUM_OFFSET = 1 + 1 + 1 + 4;
     private static final int METADATA_SIZE_WITHOUT_CHECKSUM = 1 + 1 + 1 + 4;
+    private static final int VERSION_OFFSET = 0;
+    private static final int OPEN_OFFSET = 1;
+    private static final int IO_ERROR_OFFSET = 1 + 1;
+    private static final int MAX_FILE_SIZE_OFFSET = 1 + 1 + 1;
+    private static final int CHECKSUM_OFFSET = 1 + 1 + 1 + 4;
 
     private byte version;
     private boolean open;
@@ -39,16 +43,41 @@ public class DBMetadata {
         this.ioError = ioError;
         this.maxFileSize = maxFileSize;
         ByteBuffer buffer = ByteBuffer.allocate(METADATA_SIZE);
-        buffer.put(version);
-        buffer.put((byte) (open ? 0x01 : 0x00));
-        buffer.put((byte) (ioError ? 0x01 : 0x00));
-        buffer.putInt(maxFileSize);
-        CRC32 crc32 = new CRC32();
-        crc32.update(buffer.array(), 0, METADATA_SIZE_WITHOUT_CHECKSUM);
-        if (checksum != crc32.getValue()) {
+        buffer.put(VERSION_OFFSET, version);
+        buffer.put(OPEN_OFFSET, (byte) (open ? 0x01 : 0x00));
+        buffer.put(IO_ERROR_OFFSET, (byte) (ioError ? 0x01 : 0x00));
+        buffer.putInt(MAX_FILE_SIZE_OFFSET, maxFileSize);
+        long calculatedChecksum = checksum(buffer);
+        if (checksum != calculatedChecksum) {
             throw new IOException("checksum failed. metadata corrupted");
         }
         this.checksum = checksum;
+    }
+
+    private long checksum(ByteBuffer buffer) {
+        CRC32 crc32 = new CRC32();
+        crc32.update(buffer.array(), 0, METADATA_SIZE_WITHOUT_CHECKSUM);
+        return crc32.getValue();
+    }
+
+    public ByteBuffer serialize() {
+        ByteBuffer buffer = ByteBuffer.allocate(METADATA_SIZE);
+        buffer.put(VERSION_OFFSET, version);
+        buffer.put(OPEN_OFFSET, (byte) (open ? 0x01 : 0x00));
+        buffer.put(IO_ERROR_OFFSET, (byte) (ioError ? 0x01 : 0x00));
+        buffer.putInt(MAX_FILE_SIZE_OFFSET, maxFileSize);
+        checksum = checksum(buffer);
+        buffer.putInt(CHECKSUM_OFFSET, NumberUtils.fromUInt32(checksum));
+        return buffer;
+    }
+
+    public static DBMetadata deserialize(ByteBuffer buffer) throws IOException {
+        byte version = buffer.get(VERSION_OFFSET);
+        boolean open = buffer.get(OPEN_OFFSET) != 0;
+        boolean ioError = buffer.get(IO_ERROR_OFFSET) != 0;
+        int maxFileSize = buffer.getInt(MAX_FILE_SIZE_OFFSET);
+        long checksum = NumberUtils.toUInt32(buffer.getInt(CHECKSUM_OFFSET));
+        return new DBMetadata(version, open, ioError, maxFileSize, checksum);
     }
 
     public static DBMetadata load(DBDirectory dbDirectory) throws IOException {
@@ -58,30 +87,11 @@ public class DBMetadata {
                 ByteBuffer buffer = ByteBuffer.allocate(METADATA_SIZE);
                 channel.read(buffer);
                 buffer.flip();
-                byte version = buffer.get();
-                boolean open = buffer.get() != 0;
-                boolean ioError = buffer.get() != 0;
-                int maxFileSize = buffer.getInt();
-                long checksum = NumberUtils.toUInt32(buffer.getInt());
-                return new DBMetadata(version, open, ioError, maxFileSize, checksum);
+                return deserialize(buffer);
             }
         } else {
             throw new IOException("metadata file not exists");
         }
-    }
-
-    private ByteBuffer createBufferAndUpdateChecksum() {
-        ByteBuffer buffer = ByteBuffer.allocate(METADATA_SIZE);
-        buffer.put(version);
-        buffer.put((byte) (open ? 0x01 : 0x00));
-        buffer.put((byte) (ioError ? 0x01 : 0x00));
-        buffer.putInt(maxFileSize);
-        CRC32 crc32 = new CRC32();
-        crc32.update(buffer.array(), 0, METADATA_SIZE_WITHOUT_CHECKSUM);
-        checksum = crc32.getValue();
-        buffer.putInt(NumberUtils.fromUInt32(checksum));
-        buffer.flip();
-        return buffer;
     }
 
     public void save(DBDirectory dbDirectory) throws IOException {
@@ -92,7 +102,7 @@ public class DBMetadata {
                 tempPath,
                 StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.SYNC)
         ) {
-            ByteBuffer buffer = createBufferAndUpdateChecksum();
+            ByteBuffer buffer = serialize();
             channel.write(buffer);
             Files.move(tempPath, dbDirectory.path().resolve(METADATA_FILENAME), REPLACE_EXISTING, ATOMIC_MOVE);
             dbDirectory.sync();

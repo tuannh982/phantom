@@ -22,8 +22,13 @@ public class PhantomDB implements DB {
     }
 
     @Override
-    public boolean put(byte[] key, byte[] value) throws DBException {
-        return internal.put(key, value);
+    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException {
+        return internal.putIfAbsent(key, value);
+    }
+
+    @Override
+    public boolean replace(byte[] key, byte[] value) throws DBException {
+        return internal.replace(key, value);
     }
 
     @Override
