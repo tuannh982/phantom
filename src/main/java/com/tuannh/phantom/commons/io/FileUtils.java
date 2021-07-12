@@ -4,8 +4,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -55,9 +53,10 @@ public class FileUtils {
     }
 
     public static void copy(Path src, Path dest) throws IOException {
+        Files.deleteIfExists(dest); // delete dest file
         try (
                 FileChannel srcChannel = FileChannel.open(src, StandardOpenOption.READ);
-                FileChannel destChannel = FileChannel.open(dest, StandardOpenOption.WRITE)
+                FileChannel destChannel = FileChannel.open(dest, StandardOpenOption.WRITE, StandardOpenOption.CREATE)
         ) {
             srcChannel.transferTo(0, srcChannel.size(), destChannel);
         }

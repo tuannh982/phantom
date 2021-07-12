@@ -28,7 +28,7 @@ public class RLock {
         if (lockResult) {
             long threadId = Thread.currentThread().getId();
             if (!UPDATER.compareAndSet(this, threadId, 0)) {
-                throw new AssertionError("Something wrong"); // FIXME change assertion message
+                throw new AssertionError("could not execute compareAndSet");
             }
         }
     }
