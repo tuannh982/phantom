@@ -13,13 +13,13 @@ public class Record {
      * key
      * value
      */
-    private static final int HEADER_SIZE = 1 + 1 + 4 + 8 + 4; // version(1), key_size(1), value_size(4), sequence_number(8), checksum(4)
-    private static final int HEADER_SIZE_WITHOUT_CHECKSUM = 1 + 1 + 4 + 8;
-    private static final int VERSION_OFFSET = 0;
-    private static final int KEY_SIZE_OFFSET = 1;
-    private static final int VALUE_SIZE_OFFSET = 1 + 1;
-    private static final int SEQUENCE_NUMBER_OFFSET = 1 + 1 + 4;
-    private static final int CHECKSUM_OFFSET = 1 + 1 + 4 + 8;
+    public static final int HEADER_SIZE = 1 + 1 + 4 + 8 + 4; // version(1), key_size(1), value_size(4), sequence_number(8), checksum(4)
+    public static final int HEADER_SIZE_WITHOUT_CHECKSUM = 1 + 1 + 4 + 8;
+    public static final int VERSION_OFFSET = 0;
+    public static final int KEY_SIZE_OFFSET = 1;
+    public static final int VALUE_SIZE_OFFSET = 1 + 1;
+    public static final int SEQUENCE_NUMBER_OFFSET = 1 + 1 + 4;
+    public static final int CHECKSUM_OFFSET = 1 + 1 + 4 + 8;
 
     private final Header header;
     private final byte[] key;
