@@ -31,7 +31,6 @@ public class IndexFileEntry {
     public IndexFileEntry(byte[] key, Header header) {
         this.key = key;
         this.header = header;
-
     }
 
     private long checksum(ByteBuffer buffer) {
