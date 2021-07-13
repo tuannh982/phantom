@@ -15,7 +15,6 @@ import java.util.zip.CRC32;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-@NoArgsConstructor
 @Getter
 @Setter
 public class DBMetadata {
@@ -36,6 +35,14 @@ public class DBMetadata {
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     private long checksum;
+
+    public DBMetadata() {
+        this.version = Versions.METADATA_FILE_VERSION;
+        this.open = false;
+        this.ioError = false;
+        this.maxFileSize = 0;
+        this.checksum = 0;
+    }
 
     private DBMetadata(byte version, boolean open, boolean ioError, int maxFileSize, long checksum) throws IOException {
         this.version = version;
@@ -91,6 +98,20 @@ public class DBMetadata {
             }
         } else {
             throw new IOException("metadata file not exists");
+        }
+    }
+
+    public static DBMetadata load(DBDirectory dbDirectory, DBMetadata defaultDbMetadata) throws IOException {
+        Path path = dbDirectory.path().resolve(METADATA_FILENAME);
+        if (Files.exists(path)) {
+            try (SeekableByteChannel channel = Files.newByteChannel(path)) {
+                ByteBuffer buffer = ByteBuffer.allocate(METADATA_SIZE);
+                channel.read(buffer);
+                buffer.flip();
+                return deserialize(buffer);
+            }
+        } else {
+            return defaultDbMetadata;
         }
     }
 

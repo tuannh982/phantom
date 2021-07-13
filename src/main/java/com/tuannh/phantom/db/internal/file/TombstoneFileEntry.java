@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
+@Getter
 public class TombstoneFileEntry {
     public static final int HEADER_SIZE = 1 + 1 + 8 + 4; // version(1), key_size(1), sequence_number(8), checksum(4)
     public static final int HEADER_SIZE_WITHOUT_CHECKSUM = 1 + 1 + 8;

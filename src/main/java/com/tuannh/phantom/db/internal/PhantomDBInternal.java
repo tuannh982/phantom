@@ -4,68 +4,128 @@ import com.tuannh.phantom.commons.concurrent.RLock;
 import com.tuannh.phantom.commons.io.FileUtils;
 import com.tuannh.phantom.db.DBException;
 import com.tuannh.phantom.db.index.InMemoryIndex;
+import com.tuannh.phantom.db.index.IndexMetadata;
+import com.tuannh.phantom.db.index.OnHeapInMemoryIndex;
+import com.tuannh.phantom.db.internal.file.DBFile;
+import com.tuannh.phantom.db.internal.file.Record;
+import com.tuannh.phantom.db.internal.file.TombstoneFile;
+import com.tuannh.phantom.db.internal.file.TombstoneFileEntry;
 import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
-import com.tuannh.phantom.offheap.hashtable.KeyBuffer;
-import com.tuannh.phantom.offheap.hashtable.hash.Hasher;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
+@Slf4j
 public class PhantomDBInternal implements Closeable {
-    // files
+    // primary
     private final DBDirectory dbDirectory;
+    private final DBMetadata dbMetadata;
+    private final Map<Integer, DBFile> dataFileMap;
+    // files
+    private DBFile currentDBFile;
+    private TombstoneFile currentTombstoneFile;
     // index
-    private InMemoryIndex inMemoryIndex;
+    private final InMemoryIndex inMemoryIndex;
     // lock
     private final RLock writeLock;
-    // misc
-    private final Hasher hasher;
+    //
+    private long sequenceNumber = 0;
 
-    public PhantomDBInternal(File dir, PhantomDBOptions options) throws IOException {
-        hasher = options.getHasher();
-        writeLock = new RLock();
-        dbDirectory = new DBDirectory(dir);
+    public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
+        DBDirectory dbDirectory = new DBDirectory(dir);
+        RLock writeLock = new RLock();
+        InMemoryIndex inMemoryIndex = new OnHeapInMemoryIndex(); // Just for testing purpose
+        Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
+        int maxFileId = dataFileMapReturn.getValue();
+        Map<Integer, DBFile> dataFileMap = dataFileMapReturn.getKey();
+        DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
+        if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
+            throw new DBException("could not change max_file_size after DB was created");
+        }
+        if (dbMetadata.isOpen() || dbMetadata.isIoError()) {
+            log.warn("DB was not correctly shutdown last time. Trying to repair data files...");
+            // only have to repair the last data file (one data file, one compacted file)
+            DirectoryUtils.repairLatestDataFile(dataFileMap);
+            // repair last tombstone file
+            DirectoryUtils.repairLatestTombstoneFile(dbDirectory, options);
+        }
+        dbMetadata.setOpen(true);
+        dbMetadata.setIoError(false);
+        dbMetadata.setMaxFileSize(options.getMaxFileSize());
+        dbMetadata.save(dbDirectory);
+        // TODO impl
     }
 
-    public byte[] get(byte[] key) throws DBException {
-        KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));
-        return new byte[0]; // TODO
+    public byte[] get(byte[] key) throws DBException, IOException {
+        IndexMetadata metadata = inMemoryIndex.get(key);
+        if (metadata == null) {
+            return null;
+        } else {
+            DBFile file = dataFileMap.get(metadata.getFileId());
+            if (file == null) {
+                return null;
+            } else {
+                return file.read(metadata.getValueOffset(), metadata.getValueSize());
+            }
+        }
     }
 
-    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException {
+    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));
-            // TODO
+            IndexMetadata metadata = inMemoryIndex.get(key);
+            if (metadata == null) {
+                Record entry = new Record(key, value);
+                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
+                inMemoryIndex.put(key, indexMetadata);
+                return true;
+            } else {
+                return false; // already exists
+            }
         } finally {
             writeLock.release(rlock);
         }
-        return false; // TODO
     }
 
-    public boolean replace(byte[] key, byte[] value) throws DBException {
+    public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));
-            // TODO
+            IndexMetadata metadata = inMemoryIndex.get(key);
+            if (metadata == null) {
+                return false; // not exists
+            } else {
+                Record entry = new Record(key, value);
+                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
+                inMemoryIndex.put(key, indexMetadata);
+                markPreviousVersionAsStale(key, metadata); // TODO impl
+                return true;
+            }
         } finally {
             writeLock.release(rlock);
         }
-        return false; // TODO
     }
 
-    public boolean delete(byte[] key) throws DBException {
+    public void delete(byte[] key) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            KeyBuffer keyBuffer = new KeyBuffer(key, hasher.hash(key));
-            // TODO
+            IndexMetadata metadata = inMemoryIndex.get(key);
+            if (metadata != null) {
+                inMemoryIndex.delete(key);
+                TombstoneFileEntry entry = new TombstoneFileEntry(key);
+                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                writeToCurrentTombstoneFile(entry);
+                markPreviousVersionAsStale(key, metadata); // TODO impl
+            }
         } finally {
             writeLock.release(rlock);
         }
-        return false; // TODO
     }
 
     public void snapshot(File snapshotDir) throws IOException {
@@ -77,7 +137,27 @@ public class PhantomDBInternal implements Closeable {
         }
     }
 
+    public long nextSequenceNumber() {
+        return ++sequenceNumber;
+    }
+
+    private IndexMetadata writeToCurrentDBFile(Record entry) throws IOException {
+        rolloverCurrentDBFile(entry); // TODO impl
+        return currentDBFile.writeRecord(entry);
+    }
+
+    private void writeToCurrentTombstoneFile(TombstoneFileEntry entry) throws IOException {
+        rolloverCurrentTombstoneFile(entry); // TODO impl
+        currentTombstoneFile.write(entry);
+    }
+
     public void close() throws IOException {
-        // TODO
+        boolean rlock = writeLock.lock();
+        try {
+            inMemoryIndex.close();
+            // TODO impl
+        } finally {
+            writeLock.release(rlock);
+        }
     }
 }

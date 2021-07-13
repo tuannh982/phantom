@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public class RLock {
     private static final AtomicLongFieldUpdater<RLock> UPDATER = AtomicLongFieldUpdater.newUpdater(RLock.class, "holder");
 
-    private volatile long holder;
+    private volatile long holder = 0;
 
     public boolean lock() {
         long threadId = Thread.currentThread().getId();

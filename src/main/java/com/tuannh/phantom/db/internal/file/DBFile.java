@@ -1,7 +1,7 @@
 package com.tuannh.phantom.db.internal.file;
 
 import com.tuannh.phantom.commons.io.FileUtils;
-import com.tuannh.phantom.db.index.IndexMetaData;
+import com.tuannh.phantom.db.index.IndexMetadata;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import lombok.Getter;
@@ -141,7 +141,7 @@ public class DBFile implements Closeable {
         }
     }
 
-    public IndexMetaData writeRecord(Record entry) throws IOException {
+    public IndexMetadata writeRecord(Record entry) throws IOException {
         int recordOffset = writeOffset;
         write(entry);
         IndexFileEntry indexFileEntry = new IndexFileEntry(
@@ -152,12 +152,19 @@ public class DBFile implements Closeable {
         indexFileEntry.getHeader().setSequenceNumber(entry.getHeader().getSequenceNumber());
         indexFile.write(indexFileEntry);
         int valueOffset = entry.valueOffset(recordOffset);
-        return new IndexMetaData(
+        return new IndexMetadata(
                 fileId,
                 valueOffset,
                 entry.getHeader().getValueSize(),
                 entry.getHeader().getSequenceNumber()
         );
+    }
+
+    public byte[] read(int offset, int len) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(len);
+        FileUtils.read(channel, offset, buffer);
+        buffer.flip();
+        return buffer.array();
     }
 
     @SuppressWarnings("java:S1854")

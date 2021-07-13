@@ -9,31 +9,31 @@ import java.io.IOException;
 public class PhantomDB implements DB {
     private final PhantomDBInternal internal;
 
-    public PhantomDB(File dir, PhantomDBOptions options) throws IOException {
+    public PhantomDB(File dir, PhantomDBOptions options) throws IOException, DBException {
         if (!dir.isDirectory()) {
             throw new AssertionError(dir.getName() + " is not a directory");
         }
-        internal = new PhantomDBInternal(dir, options);
+        internal = PhantomDBInternal.open(dir, options);
     }
 
     @Override
-    public byte[] get(byte[] key) throws DBException {
+    public byte[] get(byte[] key) throws DBException, IOException {
         return internal.get(key);
     }
 
     @Override
-    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException {
+    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException, IOException {
         return internal.putIfAbsent(key, value);
     }
 
     @Override
-    public boolean replace(byte[] key, byte[] value) throws DBException {
+    public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
         return internal.replace(key, value);
     }
 
     @Override
-    public boolean delete(byte[] key) throws DBException {
-        return internal.delete(key);
+    public void delete(byte[] key) throws DBException, IOException {
+        internal.delete(key);
     }
 
     @Override
