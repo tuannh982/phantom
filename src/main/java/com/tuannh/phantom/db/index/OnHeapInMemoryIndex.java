@@ -3,14 +3,14 @@ package com.tuannh.phantom.db.index;
 import com.tuannh.phantom.db.DBException;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OnHeapInMemoryIndex extends InMemoryIndex {
     private final Map<byte[], IndexMetadata> map;
 
     public OnHeapInMemoryIndex() {
-        this.map = new HashMap<>();
+        this.map = new ConcurrentHashMap<>();
     }
 
     @Override

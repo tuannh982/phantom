@@ -11,6 +11,7 @@ import com.tuannh.phantom.db.internal.file.Record;
 import com.tuannh.phantom.db.internal.file.TombstoneFile;
 import com.tuannh.phantom.db.internal.file.TombstoneFileEntry;
 import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
+import com.tuannh.phantom.db.internal.utils.InternalUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
@@ -42,7 +43,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // write lock
         RLock writeLock = new RLock();
         // index
-        InMemoryIndex inMemoryIndex = new OnHeapInMemoryIndex(); // Just for testing purpose
+        InMemoryIndex inMemoryIndex = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
         Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
         // max file id (for generating new files)
         int maxFileId = dataFileMapReturn.getValue();
@@ -60,10 +61,13 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
             // repair last tombstone file
             DirectoryUtils.repairLatestTombstoneFile(dbDirectory, options);
         }
+        // reset metadata
         dbMetadata.setOpen(true);
         dbMetadata.setIoError(false);
         dbMetadata.setMaxFileSize(options.getMaxFileSize());
+        // save & reload directory
         dbMetadata.save(dbDirectory);
+        InternalUtils.buildInMemoryIndex(inMemoryIndex, dbDirectory);
         // TODO impl
     }
 
