@@ -21,7 +21,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 @Slf4j
-public class PhantomDBInternal implements Closeable {
+public class PhantomDBInternal implements Closeable { // TODO add compaction manager, tombstone file merger (tombstone compaction)
     // primary
     private final DBDirectory dbDirectory;
     private final DBMetadata dbMetadata;
@@ -37,17 +37,23 @@ public class PhantomDBInternal implements Closeable {
     private long sequenceNumber = 0;
 
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
+        // db directory
         DBDirectory dbDirectory = new DBDirectory(dir);
+        // write lock
         RLock writeLock = new RLock();
+        // index
         InMemoryIndex inMemoryIndex = new OnHeapInMemoryIndex(); // Just for testing purpose
         Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
+        // max file id (for generating new files)
         int maxFileId = dataFileMapReturn.getValue();
+        // data map (for data query)
         Map<Integer, DBFile> dataFileMap = dataFileMapReturn.getKey();
+        // load db metadata
         DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
         if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
             throw new DBException("could not change max_file_size after DB was created");
         }
-        if (dbMetadata.isOpen() || dbMetadata.isIoError()) {
+        if (dbMetadata.isOpen() || dbMetadata.isIoError()) { // last open
             log.warn("DB was not correctly shutdown last time. Trying to repair data files...");
             // only have to repair the last data file (one data file, one compacted file)
             DirectoryUtils.repairLatestDataFile(dataFileMap);
