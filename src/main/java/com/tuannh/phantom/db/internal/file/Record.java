@@ -69,6 +69,14 @@ public class Record {
         return new Record(key, value, header);
     }
 
+    public int keyOffset(int offset) {
+        return offset + HEADER_SIZE;
+    }
+
+    public int valueOffset(int offset) {
+        return offset + HEADER_SIZE + header.keySize;
+    }
+
     @AllArgsConstructor
     @Getter
     @Setter

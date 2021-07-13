@@ -1,6 +1,7 @@
 package com.tuannh.phantom.db.internal.file;
 
 import com.tuannh.phantom.commons.io.FileUtils;
+import com.tuannh.phantom.db.index.IndexMetaData;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import lombok.Getter;
@@ -32,8 +33,8 @@ public class DBFile implements Closeable {
     private final IndexFile indexFile;
     private final FileChannel channel;
     //
-    private long unflushed = 0;
-    private long writeOffset = 0;
+    private int unflushed = 0;
+    private int writeOffset = 0;
 
     public DBFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted, File file, IndexFile indexFile, FileChannel channel) {
         this.fileId = fileId;
@@ -83,7 +84,7 @@ public class DBFile implements Closeable {
             if (entry == null) { // no need to verify checksum
                 break;
             }
-            repairFile.write(entry);
+            repairFile.writeRecord(entry);
         }
         repairFile.flushToDisk();
         repairFile.indexFile.flushToDisk();
@@ -138,6 +139,25 @@ public class DBFile implements Closeable {
         if (indexFile != null) {
             indexFile.close();
         }
+    }
+
+    public IndexMetaData writeRecord(Record entry) throws IOException {
+        int recordOffset = writeOffset;
+        write(entry);
+        IndexFileEntry indexFileEntry = new IndexFileEntry(
+                entry.getKey(),
+                recordOffset,
+                entry.getRecordSize()
+        );
+        indexFileEntry.getHeader().setSequenceNumber(entry.getHeader().getSequenceNumber());
+        indexFile.write(indexFileEntry);
+        int valueOffset = entry.valueOffset(recordOffset);
+        return new IndexMetaData(
+                fileId,
+                valueOffset,
+                entry.getHeader().getValueSize(),
+                entry.getHeader().getSequenceNumber()
+        );
     }
 
     @SuppressWarnings("java:S1854")

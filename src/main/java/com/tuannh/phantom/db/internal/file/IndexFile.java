@@ -25,8 +25,8 @@ public class IndexFile implements Closeable {
     private final File file;
     private final FileChannel channel;
     //
-    private long unflushed = 0;
-    private long writeOffset = 0;
+    private int unflushed = 0;
+    private int writeOffset = 0;
 
     private IndexFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) {
         this.fileId = fileId;
