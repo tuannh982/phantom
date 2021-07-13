@@ -2,6 +2,7 @@ package com.tuannh.phantom.db.internal.file;
 
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -12,6 +13,7 @@ import java.nio.file.Path;
 import java.util.Iterator;
 
 @Slf4j
+@Getter
 public class IndexFile implements Closeable {
     private static final String INDEX_FILE_EXTENSION = ".index";
     private static final String INDEX_REPAIR_FILE_EXTENSION = ".index.repair";
@@ -24,6 +26,7 @@ public class IndexFile implements Closeable {
     private final FileChannel channel;
     //
     private long unflushed = 0;
+    private long writeOffset = 0;
 
     private IndexFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) {
         this.fileId = fileId;
@@ -110,6 +113,7 @@ public class IndexFile implements Closeable {
         while (written < toBeWritten) {
             written += channel.write(buffers);
         }
+        writeOffset += written;
         unflushed += written;
         if (unflushed > dbOptions.getDataFlushThreshold()) {
             flush();

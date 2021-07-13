@@ -33,6 +33,7 @@ public class DBFile implements Closeable {
     private final FileChannel channel;
     //
     private long unflushed = 0;
+    private long writeOffset = 0;
 
     public DBFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted, File file, IndexFile indexFile, FileChannel channel) {
         this.fileId = fileId;
@@ -164,6 +165,7 @@ public class DBFile implements Closeable {
         while (written < toBeWritten) {
             written += channel.write(buffers);
         }
+        writeOffset += written;
         unflushed += written;
         if (unflushed > dbOptions.getDataFlushThreshold()) {
             flush();
