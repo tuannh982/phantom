@@ -19,6 +19,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Getter
 public class TombstoneFile implements Closeable {
     private static final String TOMBSTONE_FILE_EXTENSION = ".tombstone";
+    private static final String COMPACTED_TOMBSTONE_FILE_EXTENSION = ".tombstonec";
     private static final String TOMBSTONE_REPAIR_FILE_EXTENSION = ".tombstone.repair";
 
     private final int fileId;
@@ -58,6 +59,18 @@ public class TombstoneFile implements Closeable {
         return new TombstoneFile(fileId, dbDirectory, dbOptions, file, channel);
     }
 
+    // only used in db open (to cleanup tombstone)
+    @SuppressWarnings("java:S2095")
+    public static TombstoneFile createCompacted(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions) throws IOException {
+        File file = dbDirectory.path().resolve(fileId + COMPACTED_TOMBSTONE_FILE_EXTENSION).toFile();
+        while (!file.createNewFile()) {
+            fileId++;
+            file = dbDirectory.path().resolve(fileId + COMPACTED_TOMBSTONE_FILE_EXTENSION).toFile();
+        }
+        FileChannel channel = new RandomAccessFile(file, "rw").getChannel();
+        return new TombstoneFile(fileId, dbDirectory, dbOptions, file, channel);
+    }
+
     @SuppressWarnings("java:S2095")
     public static TombstoneFile open(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions) throws FileNotFoundException {
         File file = dbDirectory.path().resolve(fileId + TOMBSTONE_FILE_EXTENSION).toFile();
@@ -76,10 +89,10 @@ public class TombstoneFile implements Closeable {
             repairFile.write(entry);
         }
         repairFile.flushToDisk();
-        Files.move(repairFile.path(), path(), REPLACE_EXISTING, ATOMIC_MOVE);
-        dbDirectory.sync();
         repairFile.close();
         close();
+        Files.move(repairFile.path(), path(), REPLACE_EXISTING, ATOMIC_MOVE);
+        dbDirectory.sync();
         return open(fileId, dbDirectory, dbOptions);
     }
 

@@ -77,7 +77,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // indexing
         ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
         try {
-            InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, dbDirectory, options);
+            InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, maxFileId, dbDirectory, options);
         } finally {
             indexingProcessor.shutdown();
         }
@@ -120,15 +120,17 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            IndexMetadata metadata = indexMap.get(key);
-            if (metadata == null) {
+            IndexMetadata existedMetadata = indexMap.get(key);
+            if (existedMetadata == null) {
                 return false; // not exists
             } else {
                 Record entry = new Record(key, value);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
                 indexMap.put(key, indexMetadata);
-                markPreviousVersionAsStale(key, metadata); // TODO impl
+                // mark previous version as stale data
+                int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
+                InternalUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
                 return true;
             }
         } finally {
@@ -139,13 +141,15 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public void delete(byte[] key) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            IndexMetadata metadata = indexMap.get(key);
-            if (metadata != null) {
+            IndexMetadata existedMetadata = indexMap.get(key);
+            if (existedMetadata != null) {
                 indexMap.delete(key);
                 TombstoneFileEntry entry = new TombstoneFileEntry(key);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 writeToCurrentTombstoneFile(entry);
-                markPreviousVersionAsStale(key, metadata); // TODO impl
+                // mark previous version as stale data
+                int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
+                InternalUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
             }
         } finally {
             writeLock.release(rlock);

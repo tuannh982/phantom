@@ -11,11 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -85,19 +89,33 @@ public class InternalUtils {
         private final IndexMap indexMap;
         private final Map<Integer, Integer> staleDataMap;
         private final TombstoneFile file;
+        private final DBDirectory dbDirectory;
+        private final PhantomDBOptions options;
         private final int fileId;
 
-        public TombstoneFileProcessTask(IndexMap indexMap, Map<Integer, Integer> staleDataMap, TombstoneFile file) {
+        public TombstoneFileProcessTask(
+                IndexMap indexMap,
+                Map<Integer, Integer> staleDataMap,
+                TombstoneFile file,
+                DBDirectory dbDirectory,
+                PhantomDBOptions options
+        ) {
             this.indexMap = indexMap;
             this.staleDataMap = staleDataMap;
             this.file = file;
+            this.dbDirectory = dbDirectory;
+            this.options = options;
             this.fileId = file.getFileId();
         }
 
         @Override
         public Long call() throws Exception {
+            // prepare
             long maxSequenceNumber = Long.MIN_VALUE;
             Iterator<TombstoneFileEntry> iterator = file.iterator();
+            // create new fresh tombstone file to write
+            TombstoneFile compactedFile = null; // just lazy
+            // do
             while (iterator.hasNext()) {
                 TombstoneFileEntry entry = iterator.next();
                 // get
@@ -110,30 +128,41 @@ public class InternalUtils {
                     indexMap.delete(key);
                     int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
                     recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
-                    // TODO cleanup tombstone
+                    if (compactedFile == null) {
+                        compactedFile = TombstoneFile.createCompacted(fileId, dbDirectory, options);
+                    }
+                    compactedFile.write(entry); // no need to rollover since compactedFile's size always smaller than old file size
                 }
+            }
+            file.close();
+            if (compactedFile != null) {
+                compactedFile.flushToDisk();
+                compactedFile.close();
+                Files.move(compactedFile.path(), file.path(), REPLACE_EXISTING, ATOMIC_MOVE);
             }
             return maxSequenceNumber;
         }
     }
 
-    private static void recordStaleData(Map<Integer, Integer> staleDataMap, int fileId, int recordSize) {
+    public static void recordStaleData(Map<Integer, Integer> staleDataMap, int fileId, int recordSize) {
         Integer i = staleDataMap.get(fileId);
         int staleData = i == null ? 0 : i;
         staleDataMap.put(fileId, staleData + recordSize);
     }
 
     @SuppressWarnings("java:S2142")
-    public static long buildInMemoryIndex(
+    public static Map.Entry<Integer, Long> buildInMemoryIndex(
             ExecutorService executorService,
             IndexMap indexMap,
             Map<Integer, Integer> staleDataMap,
+            int maxFileId,
             DBDirectory dbDirectory,
             PhantomDBOptions options
     ) throws IOException {
         // ---------------------Prep   ----------------------------------------------------------------
         long maxSequenceNumber = Long.MIN_VALUE;
-        // ---------------------STAGE 1 (load index file)----------------------------------------------
+        int currentMaxFileId = maxFileId;
+        // ---------------------STAGE 1 (process index file)-------------------------------------------
         File[] indexFiles = dbDirectory.indexFiles();
         int indexFileCount = indexFiles.length;
         List<IndexFileProcessTask> indexingTasks = new ArrayList<>(indexFileCount);
@@ -150,14 +179,14 @@ public class InternalUtils {
         } catch (InterruptedException | ExecutionException e) {
             throw new IOException("indexing task interrupted", e);
         }
-        // ---------------------STAGE 1 (load tombstone file)-----------------------------------------
+        // ---------------------STAGE 2 (process tombstone file)--------------------------------------
         File[] tombstoneFiles = dbDirectory.tombstoneFiles();
         int tombstoneFileCount = tombstoneFiles.length;
         List<TombstoneFileProcessTask> tombstoneFileProcessTasks = new ArrayList<>(tombstoneFileCount);
         for (File file : tombstoneFiles) {
             int fileId = DirectoryUtils.fileId(file, DirectoryUtils.TOMBSTONE_FILE_PATTERN);
             TombstoneFile tombstoneFile = TombstoneFile.open(fileId, dbDirectory, options);
-            tombstoneFileProcessTasks.add(new TombstoneFileProcessTask(indexMap, staleDataMap, tombstoneFile));
+            tombstoneFileProcessTasks.add(new TombstoneFileProcessTask(indexMap, staleDataMap, tombstoneFile, dbDirectory, options));
         }
         try {
             List<Future<Long>> futures = executorService.invokeAll(tombstoneFileProcessTasks);
@@ -167,6 +196,13 @@ public class InternalUtils {
         } catch (InterruptedException | ExecutionException e) {
             throw new IOException("tombstone process task interrupted", e);
         }
-        return maxSequenceNumber;
+        // ---------------------STAGE 3 (merge tombstone file)----------------------------------------
+        // re-scan tombstone file
+        tombstoneFiles = dbDirectory.tombstoneFiles(); // already sorted
+        tombstoneFileCount = tombstoneFiles.length;
+        TombstoneFile mergedTombstone = null;
+        currentMaxFileId++;
+        // TODO merge tombstone files
+        return new AbstractMap.SimpleImmutableEntry<>(currentMaxFileId, maxSequenceNumber);
     }
 }

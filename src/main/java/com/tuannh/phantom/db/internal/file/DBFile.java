@@ -88,11 +88,11 @@ public class DBFile implements Closeable {
         }
         repairFile.flushToDisk();
         repairFile.indexFile.flushToDisk();
+        repairFile.close();
+        close();
         Files.move(repairFile.indexFile.path(), indexFile.path(), REPLACE_EXISTING, ATOMIC_MOVE);
         Files.move(repairFile.path(), path(), REPLACE_EXISTING, ATOMIC_MOVE);
         dbDirectory.sync();
-        repairFile.close();
-        close();
         return openForRead(fileId, dbDirectory, dbOptions, compacted);
     }
 

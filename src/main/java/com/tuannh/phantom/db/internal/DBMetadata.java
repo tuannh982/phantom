@@ -125,8 +125,9 @@ public class DBMetadata {
         ) {
             ByteBuffer buffer = serialize();
             channel.write(buffer);
-            Files.move(tempPath, dbDirectory.path().resolve(METADATA_FILENAME), REPLACE_EXISTING, ATOMIC_MOVE);
-            dbDirectory.sync();
+            channel.force(false);
         }
+        Files.move(tempPath, dbDirectory.path().resolve(METADATA_FILENAME), REPLACE_EXISTING, ATOMIC_MOVE);
+        dbDirectory.sync();
     }
 }

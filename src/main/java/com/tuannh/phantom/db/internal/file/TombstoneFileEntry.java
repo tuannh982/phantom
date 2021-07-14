@@ -49,6 +49,10 @@ public class TombstoneFileEntry {
         return new ByteBuffer[] {headerBuffer, ByteBuffer.wrap(key)};
     }
 
+    public int serializedSize() {
+        return HEADER_SIZE + key.length;
+    }
+
     public static TombstoneFileEntry deserialize(ByteBuffer buffer, Header header) {
         buffer.flip();
         byte[] key = new byte[header.keySize];
