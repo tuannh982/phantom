@@ -1,11 +1,13 @@
 package com.tuannh.phantom.db.index;
 
 import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.nio.ByteBuffer;
 
+@EqualsAndHashCode
 @AllArgsConstructor
 @Getter
 @Setter

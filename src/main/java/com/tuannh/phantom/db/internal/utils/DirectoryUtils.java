@@ -71,17 +71,12 @@ public class DirectoryUtils {
         for (File file : dataFiles) {
             String fileName = file.getName();
             boolean compacted = fileName.charAt(fileName.length() - 1) == 'c';
-            Matcher fileIdMatcher = DATA_FILE_PATTERN.matcher(fileName);
-            if (fileIdMatcher.find()) {
-                int fileId = Integer.parseInt(fileIdMatcher.group(1));
-                // update maxFileId
-                maxFileId = Math.max(maxFileId, fileId);
-                DBFile dbFile = DBFile.openForRead(fileId, dbDirectory, options, compacted);
-                if (dbFileMap.putIfAbsent(fileId, dbFile) != null) {
-                    throw new DBException("found duplicated file ID, file_id = " + fileId);
-                }
-            } else {
-                throw new DBException("filename did not match data file pattern"); // never happen
+            int fileId = fileId(file, DATA_FILE_PATTERN);
+            // update maxFileId
+            maxFileId = Math.max(maxFileId, fileId);
+            DBFile dbFile = DBFile.openForRead(fileId, dbDirectory, options, compacted);
+            if (dbFileMap.putIfAbsent(fileId, dbFile) != null) {
+                throw new DBException("found duplicated file ID, file_id = " + fileId);
             }
         }
         // ---------------------STAGE 2----------------------------------------------------------------

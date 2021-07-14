@@ -11,5 +11,6 @@ public class PhantomDBOptions {
     private int fixedKeySize;
     private int dataFlushThreshold;
     private int maxFileSize;
+    private int numberOfIndexingThread;
     private final Hasher hasher = new Murmur3();
 }

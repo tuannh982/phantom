@@ -3,7 +3,7 @@ package com.tuannh.phantom.db.internal;
 import com.tuannh.phantom.commons.concurrent.RLock;
 import com.tuannh.phantom.commons.io.FileUtils;
 import com.tuannh.phantom.db.DBException;
-import com.tuannh.phantom.db.index.InMemoryIndex;
+import com.tuannh.phantom.db.index.IndexMap;
 import com.tuannh.phantom.db.index.IndexMetadata;
 import com.tuannh.phantom.db.index.OnHeapInMemoryIndex;
 import com.tuannh.phantom.db.internal.file.DBFile;
@@ -20,6 +20,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 public class PhantomDBInternal implements Closeable { // TODO add compaction manager, tombstone file merger (tombstone compaction)
@@ -31,7 +34,9 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     private DBFile currentDBFile;
     private TombstoneFile currentTombstoneFile;
     // index
-    private final InMemoryIndex inMemoryIndex;
+    private final IndexMap indexMap;
+    // compaction
+    private final Map<Integer, Integer> staleDataMap;
     // lock
     private final RLock writeLock;
     //
@@ -43,7 +48,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // write lock
         RLock writeLock = new RLock();
         // index
-        InMemoryIndex inMemoryIndex = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
+        IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
         Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
         // max file id (for generating new files)
         int maxFileId = dataFileMapReturn.getValue();
@@ -67,12 +72,21 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         dbMetadata.setMaxFileSize(options.getMaxFileSize());
         // save & reload directory
         dbMetadata.save(dbDirectory);
-        InternalUtils.buildInMemoryIndex(inMemoryIndex, dbDirectory);
+        // staleMap (for compaction)
+        Map<Integer, Integer> staleDataMap = new ConcurrentHashMap<>();
+        // indexing
+        ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
+        try {
+            InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, dbDirectory, options);
+        } finally {
+            indexingProcessor.shutdown();
+        }
+        // TODO cleanup tombstone files
         // TODO impl
     }
 
     public byte[] get(byte[] key) throws DBException, IOException {
-        IndexMetadata metadata = inMemoryIndex.get(key);
+        IndexMetadata metadata = indexMap.get(key);
         if (metadata == null) {
             return null;
         } else {
@@ -88,12 +102,12 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public boolean putIfAbsent(byte[] key, byte[] value) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            IndexMetadata metadata = inMemoryIndex.get(key);
+            IndexMetadata metadata = indexMap.get(key);
             if (metadata == null) {
                 Record entry = new Record(key, value);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
-                inMemoryIndex.put(key, indexMetadata);
+                indexMap.put(key, indexMetadata);
                 return true;
             } else {
                 return false; // already exists
@@ -106,14 +120,14 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            IndexMetadata metadata = inMemoryIndex.get(key);
+            IndexMetadata metadata = indexMap.get(key);
             if (metadata == null) {
                 return false; // not exists
             } else {
                 Record entry = new Record(key, value);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
-                inMemoryIndex.put(key, indexMetadata);
+                indexMap.put(key, indexMetadata);
                 markPreviousVersionAsStale(key, metadata); // TODO impl
                 return true;
             }
@@ -125,9 +139,9 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public void delete(byte[] key) throws DBException, IOException {
         boolean rlock = writeLock.lock();
         try {
-            IndexMetadata metadata = inMemoryIndex.get(key);
+            IndexMetadata metadata = indexMap.get(key);
             if (metadata != null) {
-                inMemoryIndex.delete(key);
+                indexMap.delete(key);
                 TombstoneFileEntry entry = new TombstoneFileEntry(key);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 writeToCurrentTombstoneFile(entry);
@@ -148,7 +162,12 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     }
 
     public long nextSequenceNumber() {
-        return ++sequenceNumber;
+        sequenceNumber++;
+        if (sequenceNumber == Long.MIN_VALUE) {
+            return ++sequenceNumber;
+        } else {
+            return sequenceNumber;
+        }
     }
 
     private IndexMetadata writeToCurrentDBFile(Record entry) throws IOException {
@@ -164,7 +183,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     public void close() throws IOException {
         boolean rlock = writeLock.lock();
         try {
-            inMemoryIndex.close();
+            indexMap.close();
             // TODO impl
         } finally {
             writeLock.release(rlock);

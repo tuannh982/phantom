@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class OnHeapInMemoryIndex extends InMemoryIndex {
+public class OnHeapInMemoryIndex extends IndexMap {
     private final Map<byte[], IndexMetadata> map;
 
     public OnHeapInMemoryIndex() {
@@ -21,6 +21,16 @@ public class OnHeapInMemoryIndex extends InMemoryIndex {
     @Override
     public void put(byte[] key, IndexMetadata metaData) throws DBException {
         map.put(key, metaData);
+    }
+
+    @Override
+    public IndexMetadata putIfAbsent(byte[] key, IndexMetadata metaData) throws DBException {
+        return map.putIfAbsent(key, metaData);
+    }
+
+    @Override
+    public boolean replace(byte[] key, IndexMetadata oldValue, IndexMetadata newValue) throws DBException {
+        return map.replace(key, oldValue, newValue);
     }
 
     @Override
