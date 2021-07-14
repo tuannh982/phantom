@@ -11,6 +11,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Getter
@@ -157,7 +158,7 @@ public class IndexFile implements Closeable {
                     offset = channelSize;
                 }
             }
-            return null;
+            throw new NoSuchElementException();
         }
     }
 }

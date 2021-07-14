@@ -24,6 +24,7 @@ public class DirectoryUtils {
     public static final Pattern DATA_FILE_PATTERN = Pattern.compile("([0-9]+)\\.datac?");
     public static final Pattern INDEX_FILE_PATTERN = Pattern.compile("([0-9]+)\\.index");
     public static final Pattern TOMBSTONE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.tombstone");
+    public static final Pattern COMPACTED_TOMBSTONE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.tombstonec");
     public static final Pattern STORAGE_FILE_PATTERN = Pattern.compile("([0-9]+)\\.[a-z]+");
 
     // all storage file name is number
@@ -57,6 +58,15 @@ public class DirectoryUtils {
         try {
             File[] files = FileUtils.ls(dir, TOMBSTONE_FILE_PATTERN);
             Arrays.sort(files, Comparator.comparingInt(file -> fileId(file, TOMBSTONE_FILE_PATTERN)));
+            return files;
+        } catch (IOException ignored) { /*never happen*/ }
+        return new File[0];
+    }
+
+    public static File[] compactedTombstoneFiles(File dir) {
+        try {
+            File[] files = FileUtils.ls(dir, COMPACTED_TOMBSTONE_FILE_PATTERN);
+            Arrays.sort(files, Comparator.comparingInt(file -> fileId(file, COMPACTED_TOMBSTONE_FILE_PATTERN)));
             return files;
         } catch (IOException ignored) { /*never happen*/ }
         return new File[0];

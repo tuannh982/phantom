@@ -150,7 +150,7 @@ public class InternalUtils {
         staleDataMap.put(fileId, staleData + recordSize);
     }
 
-    @SuppressWarnings("java:S2142")
+    @SuppressWarnings({"java:S2142", "java:S3776"})
     public static Map.Entry<Integer, Long> buildInMemoryIndex(
             ExecutorService executorService,
             IndexMap indexMap,
@@ -230,6 +230,9 @@ public class InternalUtils {
                         dbDirectory.sync();
                     }
                     mergedTombstoneFile.write(entry);
+                }
+                if (mergedTombstoneFile != null) {
+                    mergedTombstoneFile.flushToDisk(); // forced flush
                 }
                 tombstoneFile.close();
                 tombstoneFile.delete();

@@ -43,6 +43,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     private long sequenceNumber = 0;
     private int fileId;
 
+    @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
         // db directory
         DBDirectory dbDirectory = new DBDirectory(dir);
@@ -66,6 +67,11 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
             DirectoryUtils.repairLatestDataFile(dataFileMap);
             // repair last tombstone file
             DirectoryUtils.repairLatestTombstoneFile(dbDirectory, options);
+            // no compacted tombstone should be exists, so just delete all
+            File[] compactedTombstoneFiles = DirectoryUtils.compactedTombstoneFiles(dbDirectory.file());
+            for (File file : compactedTombstoneFiles) {
+                file.delete();
+            }
         }
         // reset metadata
         dbMetadata.setOpen(true);
@@ -85,10 +91,11 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         } finally {
             indexingProcessor.shutdown();
         }
-        // TODO cleanup tombstone files
+        // TODO initiate compaction manager
         // TODO impl
     }
 
+    @SuppressWarnings("java:S1168") // no result return null, not empty array
     public byte[] get(byte[] key) throws DBException, IOException {
         IndexMetadata metadata = indexMap.get(key);
         if (metadata == null) {

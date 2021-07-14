@@ -11,6 +11,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -187,7 +188,7 @@ public class TombstoneFile implements Closeable {
                     offset = channelSize;
                 }
             }
-            return null;
+            throw new NoSuchElementException();
         }
     }
 }
