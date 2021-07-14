@@ -200,9 +200,41 @@ public class InternalUtils {
         // re-scan tombstone file
         tombstoneFiles = dbDirectory.tombstoneFiles(); // already sorted
         tombstoneFileCount = tombstoneFiles.length;
-        TombstoneFile mergedTombstone = null;
-        currentMaxFileId++;
-        // TODO merge tombstone files
+        if (tombstoneFileCount > 0) {
+            // construct tombstone list
+            TombstoneFile[] tombstones = new TombstoneFile[tombstoneFileCount];
+            for (int i = 0; i < tombstoneFileCount; i++) {
+                File file = tombstoneFiles[i];
+                int fileId = DirectoryUtils.fileId(file, DirectoryUtils.TOMBSTONE_FILE_PATTERN);
+                tombstones[i] = TombstoneFile.open(fileId, dbDirectory, options);
+            }
+            // just write to new files
+            TombstoneFile mergedTombstoneFile = null; // just lazy
+            for (TombstoneFile tombstoneFile : tombstones) {
+                Iterator<TombstoneFileEntry> iterator = tombstoneFile.iterator();
+                while (iterator.hasNext()) {
+                    TombstoneFileEntry entry = iterator.next();
+                    // rollover current tombstone file
+                    if (mergedTombstoneFile == null) {
+                        // create new file
+                        currentMaxFileId++;
+                        mergedTombstoneFile = TombstoneFile.create(currentMaxFileId, dbDirectory, options);
+                        dbDirectory.sync();
+                    } else if (mergedTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+                        // flush current file
+                        mergedTombstoneFile.flushToDisk();
+                        mergedTombstoneFile.close();
+                        // create new file
+                        currentMaxFileId++;
+                        mergedTombstoneFile = TombstoneFile.create(currentMaxFileId, dbDirectory, options);
+                        dbDirectory.sync();
+                    }
+                    mergedTombstoneFile.write(entry);
+                }
+                tombstoneFile.close();
+                tombstoneFile.delete();
+            }
+        }
         return new AbstractMap.SimpleImmutableEntry<>(currentMaxFileId, maxSequenceNumber);
     }
 }

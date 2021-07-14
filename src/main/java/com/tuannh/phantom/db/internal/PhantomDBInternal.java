@@ -41,6 +41,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     private final RLock writeLock;
     //
     private long sequenceNumber = 0;
+    private int fileId;
 
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
         // db directory
@@ -75,9 +76,12 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // staleMap (for compaction)
         Map<Integer, Integer> staleDataMap = new ConcurrentHashMap<>();
         // indexing
+        long maxSequenceNumber = Long.MIN_VALUE;
         ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
         try {
-            InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, maxFileId, dbDirectory, options);
+            Map.Entry<Integer, Long> indexBuildReturn = InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, maxFileId, dbDirectory, options);
+            maxFileId = indexBuildReturn.getKey();
+            maxSequenceNumber = indexBuildReturn.getValue();
         } finally {
             indexingProcessor.shutdown();
         }
@@ -171,6 +175,15 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
             return ++sequenceNumber;
         } else {
             return sequenceNumber;
+        }
+    }
+
+    public long nextFileId() {
+        fileId++;
+        if (fileId == Integer.MIN_VALUE) {
+            return ++fileId;
+        } else {
+            return fileId;
         }
     }
 
