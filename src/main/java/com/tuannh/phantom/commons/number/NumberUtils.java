@@ -20,4 +20,13 @@ public class NumberUtils {
     public static int fromUInt8(byte x) {
         return x & 0xff;
     }
+
+    public static int checkedCast(long value) {
+        int result = (int)value;
+        if ((long)result != value) {
+            throw new IllegalArgumentException((new StringBuilder(34)).append("Out of range: ").append(value).toString());
+        } else {
+            return result;
+        }
+    }
 }

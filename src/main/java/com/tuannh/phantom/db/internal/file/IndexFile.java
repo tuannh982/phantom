@@ -1,5 +1,6 @@
 package com.tuannh.phantom.db.internal.file;
 
+import com.tuannh.phantom.commons.number.NumberUtils;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import lombok.Getter;
@@ -29,12 +30,13 @@ public class IndexFile implements Closeable {
     private int unflushed = 0;
     private int writeOffset = 0;
 
-    private IndexFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) {
+    private IndexFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) throws IOException {
         this.fileId = fileId;
         this.dbDirectory = dbDirectory;
         this.dbOptions = dbOptions;
         this.file = file;
         this.channel = channel;
+        this.writeOffset = NumberUtils.checkedCast(channel.size());
     }
 
     public File file() {

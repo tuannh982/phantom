@@ -1,6 +1,7 @@
 package com.tuannh.phantom.db.internal.file;
 
 import com.tuannh.phantom.commons.io.FileUtils;
+import com.tuannh.phantom.commons.number.NumberUtils;
 import com.tuannh.phantom.db.index.IndexMetadata;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
@@ -37,7 +38,7 @@ public class DBFile implements Closeable {
     private int unflushed = 0;
     private int writeOffset = 0;
 
-    public DBFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted, File file, IndexFile indexFile, FileChannel channel) {
+    private DBFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, boolean compacted, File file, IndexFile indexFile, FileChannel channel) throws IOException {
         this.fileId = fileId;
         this.dbDirectory = dbDirectory;
         this.dbOptions = dbOptions;
@@ -45,6 +46,7 @@ public class DBFile implements Closeable {
         this.file = file;
         this.indexFile = indexFile;
         this.channel = channel;
+        this.writeOffset = NumberUtils.checkedCast(channel.size());
     }
 
     public File file() {

@@ -18,8 +18,6 @@ public class CompactionManager implements Closeable {
     // primary
     private final DBDirectory dbDirectory;
     private PhantomDBInternal dbInternal;
-    // stale data
-    private final NavigableMap<Integer, Integer> staleDataMap; // should be treemap with threadsafe
     private final Map<Integer, Integer> tombstoneLastAssociateDataFileMap;
     // files
     private DBFile currentDBFile;
@@ -27,9 +25,8 @@ public class CompactionManager implements Closeable {
     private boolean started = false;
     private boolean closed = false;
 
-    public CompactionManager(DBDirectory dbDirectory, NavigableMap<Integer, Integer> staleDataMap, Map<Integer, Integer> tombstoneLastAssociateDataFileMap) {
+    public CompactionManager(DBDirectory dbDirectory, Map<Integer, Integer> tombstoneLastAssociateDataFileMap) {
         this.dbDirectory = dbDirectory;
-        this.staleDataMap = staleDataMap;
         this.tombstoneLastAssociateDataFileMap = tombstoneLastAssociateDataFileMap;
     }
 
@@ -46,9 +43,8 @@ public class CompactionManager implements Closeable {
         // TODO start compaction thread
     }
 
-    public void markDataAsStale(byte[] key, IndexMetadata existedMetadata) {
-        int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
-        CompactionUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
+    public void queueForCompaction(DBFile fileToCompact) {
+        // TODO
     }
 
     private IndexMetadata writeToCurrentDBFile(Record entry) throws IOException {

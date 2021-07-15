@@ -1,5 +1,6 @@
 package com.tuannh.phantom.db.internal.file;
 
+import com.tuannh.phantom.commons.number.NumberUtils;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import lombok.Getter;
@@ -34,12 +35,13 @@ public class TombstoneFile implements Closeable {
     private int unflushed = 0;
     private int writeOffset = 0;
 
-    private TombstoneFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) {
+    private TombstoneFile(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions, File file, FileChannel channel) throws IOException {
         this.fileId = fileId;
         this.dbDirectory = dbDirectory;
         this.dbOptions = dbOptions;
         this.file = file;
         this.channel = channel;
+        this.writeOffset = NumberUtils.checkedCast(channel.size());
     }
 
     public File file() {
@@ -74,7 +76,7 @@ public class TombstoneFile implements Closeable {
     }
 
     @SuppressWarnings("java:S2095")
-    public static TombstoneFile open(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions) throws FileNotFoundException {
+    public static TombstoneFile open(int fileId, DBDirectory dbDirectory, PhantomDBOptions dbOptions) throws IOException {
         File file = dbDirectory.path().resolve(fileId + TOMBSTONE_FILE_EXTENSION).toFile();
         FileChannel channel = new RandomAccessFile(file, "rw").getChannel();
         return new TombstoneFile(fileId, dbDirectory, dbOptions, file, channel);
