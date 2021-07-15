@@ -69,6 +69,10 @@ public class Record {
         return new Record(key, value, header);
     }
 
+    public int serializedSize() {
+        return HEADER_SIZE + key.length + value.length;
+    }
+
     public int keyOffset(int offset) {
         return offset + HEADER_SIZE;
     }

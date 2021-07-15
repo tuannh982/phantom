@@ -64,7 +64,7 @@ public class InternalUtils {
                         IndexMetadata existedMetadata = indexMap.get(key);
                         if (existedMetadata.getSequenceNumber() > sequenceNumber) {
                             // stale data, add to stale map to compact later
-                            recordStaleData(staleDataMap, fileId, recordSize);
+                            CompactionUtils.recordStaleData(staleDataMap, fileId, recordSize);
                             break;
                         } else if (indexMap.replace(key, existedMetadata, metadata)) {
                             /*
@@ -74,7 +74,7 @@ public class InternalUtils {
                              */
                             // add current indexed data to stale map
                             int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
-                            recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
+                            CompactionUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
                             break;
                         }
                     }
@@ -127,7 +127,7 @@ public class InternalUtils {
                 if (existedMetadata != null && existedMetadata.getSequenceNumber() < sequenceNumber) {
                     indexMap.delete(key);
                     int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
-                    recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
+                    CompactionUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
                     if (compactedFile == null) {
                         compactedFile = TombstoneFile.createCompacted(fileId, dbDirectory, options);
                     }
@@ -142,12 +142,6 @@ public class InternalUtils {
             }
             return maxSequenceNumber;
         }
-    }
-
-    public static void recordStaleData(Map<Integer, Integer> staleDataMap, int fileId, int recordSize) {
-        Integer i = staleDataMap.get(fileId);
-        int staleData = i == null ? 0 : i;
-        staleDataMap.put(fileId, staleData + recordSize);
     }
 
     @SuppressWarnings({"java:S2142", "java:S3776"})

@@ -6,10 +6,12 @@ import com.tuannh.phantom.db.DBException;
 import com.tuannh.phantom.db.index.IndexMap;
 import com.tuannh.phantom.db.index.IndexMetadata;
 import com.tuannh.phantom.db.index.OnHeapInMemoryIndex;
+import com.tuannh.phantom.db.internal.compact.CompactionManager;
 import com.tuannh.phantom.db.internal.file.DBFile;
 import com.tuannh.phantom.db.internal.file.Record;
 import com.tuannh.phantom.db.internal.file.TombstoneFile;
 import com.tuannh.phantom.db.internal.file.TombstoneFileEntry;
+import com.tuannh.phantom.db.internal.utils.CompactionUtils;
 import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
 import com.tuannh.phantom.db.internal.utils.InternalUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ import java.util.concurrent.Executors;
 public class PhantomDBInternal implements Closeable { // TODO add compaction manager, tombstone file merger (tombstone compaction)
     // primary
     private final DBDirectory dbDirectory;
+    private final PhantomDBOptions options;
     private final DBMetadata dbMetadata;
     private final Map<Integer, DBFile> dataFileMap;
     // files
@@ -36,7 +39,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     // index
     private final IndexMap indexMap;
     // compaction
-    private final Map<Integer, Integer> staleDataMap;
+    private final CompactionManager compactionManager;
     // lock
     private final RLock writeLock;
     //
@@ -165,8 +168,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
                 indexMap.put(key, indexMetadata);
                 // mark previous version as stale data
-                int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
-                InternalUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
+                compactionManager.markDataAsStale(key, existedMetadata);
                 return true;
             }
         } finally {
@@ -184,8 +186,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 writeToCurrentTombstoneFile(entry);
                 // mark previous version as stale data
-                int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
-                InternalUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
+                compactionManager.markDataAsStale(key, existedMetadata);
             }
         } finally {
             writeLock.release(rlock);
@@ -210,7 +211,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         }
     }
 
-    public long nextFileId() {
+    public int nextFileId() {
         fileId++;
         if (fileId == Integer.MIN_VALUE) {
             return ++fileId;
@@ -220,13 +221,27 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     }
 
     private IndexMetadata writeToCurrentDBFile(Record entry) throws IOException {
-        rolloverCurrentDBFile(entry); // TODO impl
+        rolloverCurrentDBFile(entry);
         return currentDBFile.writeRecord(entry);
     }
 
     private void writeToCurrentTombstoneFile(TombstoneFileEntry entry) throws IOException {
-        rolloverCurrentTombstoneFile(entry); // TODO impl
+        rolloverCurrentTombstoneFile(entry);
         currentTombstoneFile.write(entry);
+    }
+
+    private void rolloverCurrentDBFile(Record entry) throws IOException {
+        if (currentDBFile == null || currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+            currentDBFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            dbDirectory.sync();
+        }
+    }
+
+    private void rolloverCurrentTombstoneFile(TombstoneFileEntry entry) throws IOException {
+        if (currentTombstoneFile == null || currentTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+            currentTombstoneFile = TombstoneFile.create(nextFileId(), dbDirectory, options);
+            dbDirectory.sync();
+        }
     }
 
     public void close() throws IOException {
