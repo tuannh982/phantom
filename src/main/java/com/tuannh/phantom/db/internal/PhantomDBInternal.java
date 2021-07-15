@@ -14,6 +14,7 @@ import com.tuannh.phantom.db.internal.file.TombstoneFileEntry;
 import com.tuannh.phantom.db.internal.utils.CompactionUtils;
 import com.tuannh.phantom.db.internal.utils.DirectoryUtils;
 import com.tuannh.phantom.db.internal.utils.InternalUtils;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
@@ -22,14 +23,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Slf4j
-public class PhantomDBInternal implements Closeable { // TODO add compaction manager, tombstone file merger (tombstone compaction)
+public class PhantomDBInternal implements Closeable {
     // primary
     private final DBDirectory dbDirectory;
+    @Getter
     private final PhantomDBOptions options;
     private final DBMetadata dbMetadata;
     private final Map<Integer, DBFile> dataFileMap;
@@ -39,16 +43,17 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     // index
     private final IndexMap indexMap;
     // compaction
+    @Getter
     private final CompactionManager compactionManager;
     // lock
     private final RLock writeLock;
     //
-    private long sequenceNumber = 0;
+    private long sequenceNumber;
     private int fileId;
 
     @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
-        log.info("initiating DBDirectory...");
+        log.info("Initiating DBDirectory...");
         // db directory
         DBDirectory dbDirectory = new DBDirectory(dir);
         log.info("DBDirectory initiated");
@@ -93,7 +98,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         dbMetadata.save(dbDirectory);
         log.info("DBMetadata loaded");
         // staleMap (for compaction)
-        Map<Integer, Integer> staleDataMap = new ConcurrentHashMap<>();
+        NavigableMap<Integer, Integer> staleDataMap = new ConcurrentSkipListMap<>();
         /*
         last associate data file map, if no data file with file_id <= last associate data file id exists
         -> delete tombstone file since all associated files have been deleted already (they're compacted)
@@ -119,8 +124,44 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
             indexingProcessor.shutdown();
             log.info("Index built");
         }
-        // TODO initiate compaction manager
-        // TODO impl
+        log.info("Initiating Compaction Manager...");
+        CompactionManager compactionManager = new CompactionManager(dbDirectory, staleDataMap, tombstoneLastAssociateDataFileMap);
+        log.info("Compaction Manager initiated");
+        PhantomDBInternal dbInternal = new PhantomDBInternal(
+                dbDirectory,
+                options,
+                dbMetadata,
+                dataFileMap,
+                indexMap,
+                compactionManager,
+                writeLock,
+                maxSequenceNumber + 1, // skip for safety
+                maxFileId + 1 // skip for safety
+        );
+        log.info("Starting Compaction Manager...");
+        compactionManager.start(dbInternal);
+        log.info("Compaction Manager started");
+        return dbInternal;
+    }
+
+    private PhantomDBInternal(
+            DBDirectory dbDirectory, PhantomDBOptions options,
+            DBMetadata dbMetadata,
+            Map<Integer, DBFile> dataFileMap,
+            IndexMap indexMap,
+            CompactionManager compactionManager,
+            RLock writeLock,
+            long sequenceNumber,
+            int fileId) {
+        this.dbDirectory = dbDirectory;
+        this.options = options;
+        this.dbMetadata = dbMetadata;
+        this.dataFileMap = dataFileMap;
+        this.indexMap = indexMap;
+        this.compactionManager = compactionManager;
+        this.writeLock = writeLock;
+        this.sequenceNumber = sequenceNumber;
+        this.fileId = fileId;
     }
 
     @SuppressWarnings("java:S1168") // no result return null, not empty array
@@ -231,14 +272,40 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
     }
 
     private void rolloverCurrentDBFile(Record entry) throws IOException {
-        if (currentDBFile == null || currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+        if (currentDBFile == null) {
+            currentDBFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            dbDirectory.sync();
+        } else if (currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+            currentDBFile.flushToDisk();
+            currentDBFile.close();
             currentDBFile = DBFile.create(nextFileId(), dbDirectory, options, false);
             dbDirectory.sync();
         }
     }
 
+    public DBFile rolloverDBFile(DBFile dbFile, Record entry) throws IOException {
+        if (dbFile == null) {
+            DBFile newFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            dbDirectory.sync();
+            return newFile;
+        } else if (dbFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+            dbFile.flushToDisk();
+            dbFile.close();
+            DBFile newFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            dbDirectory.sync();
+            return newFile;
+        } else {
+            return dbFile;
+        }
+    }
+
     private void rolloverCurrentTombstoneFile(TombstoneFileEntry entry) throws IOException {
-        if (currentTombstoneFile == null || currentTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+        if (currentTombstoneFile == null) {
+            currentTombstoneFile = TombstoneFile.create(nextFileId(), dbDirectory, options);
+            dbDirectory.sync();
+        } else if (currentTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+            currentTombstoneFile.flushToDisk();
+            currentTombstoneFile.close();
             currentTombstoneFile = TombstoneFile.create(nextFileId(), dbDirectory, options);
             dbDirectory.sync();
         }
@@ -248,6 +315,15 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         boolean rlock = writeLock.lock();
         try {
             indexMap.close();
+            if (currentDBFile != null) {
+                currentDBFile.close();
+            }
+            if (currentTombstoneFile != null) {
+                currentTombstoneFile.close();
+            }
+            compactionManager.close();
+            dbDirectory.close();
+            dbMetadata.save(dbDirectory);
             // TODO impl
         } finally {
             writeLock.release(rlock);

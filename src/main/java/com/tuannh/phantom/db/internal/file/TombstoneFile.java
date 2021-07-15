@@ -131,6 +131,7 @@ public class TombstoneFile implements Closeable {
     @Override
     public void close() throws IOException {
         if (channel != null && channel.isOpen()) {
+            channel.force(true);
             channel.close();
         }
     }

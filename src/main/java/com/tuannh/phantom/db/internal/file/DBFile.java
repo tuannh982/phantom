@@ -135,6 +135,7 @@ public class DBFile implements Closeable {
     @Override
     public void close() throws IOException {
         if (channel != null && channel.isOpen()) {
+            channel.force(true);
             channel.close();
         }
         if (indexFile != null) {

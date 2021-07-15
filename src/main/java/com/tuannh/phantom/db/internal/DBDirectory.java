@@ -61,6 +61,7 @@ public class DBDirectory implements Closeable {
     @Override
     public void close() throws IOException {
         if (dirChannel != null) {
+            dirChannel.force(true);
             dirChannel.close();
         }
     }
