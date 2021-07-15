@@ -56,6 +56,8 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         int maxFileId = dataFileMapReturn.getValue();
         // data map (for data query)
         Map<Integer, DBFile> dataFileMap = dataFileMapReturn.getKey();
+        // delete all orphaned index files
+        DirectoryUtils.deleteOrphanedIndexFiles(dataFileMap, dbDirectory);
         // load db metadata
         DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
         if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
