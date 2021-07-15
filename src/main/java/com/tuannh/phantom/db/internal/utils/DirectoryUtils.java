@@ -72,6 +72,18 @@ public class DirectoryUtils {
         return new File[0];
     }
 
+    public static int getMaxFileId(File dir) {
+        try {
+            File[] files = FileUtils.ls(dir, STORAGE_FILE_PATTERN);
+            if (files.length > 0) {
+                return fileId(files[files.length - 1], STORAGE_FILE_PATTERN);
+            } else {
+                return Integer.MIN_VALUE;
+            }
+        } catch (IOException ignored) { /*never happen*/ }
+        return Integer.MIN_VALUE;
+    }
+
     public static Map.Entry<Map<Integer, DBFile>, Integer> buildDataFileMap(DBDirectory dbDirectory, PhantomDBOptions options, int defaultFileId) throws IOException, DBException {
         // ---------------------Prep   ----------------------------------------------------------------
         Map<Integer, DBFile> dbFileMap = new ConcurrentHashMap<>();

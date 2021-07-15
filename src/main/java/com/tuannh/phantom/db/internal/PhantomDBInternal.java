@@ -52,11 +52,11 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // index
         IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
         Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
-        // max file id (for generating new files)
-        int maxFileId = dataFileMapReturn.getValue();
+        // max data file id (for tombstone compaction)
+        int maxDataFileId = dataFileMapReturn.getValue();
         // data map (for data query)
         Map<Integer, DBFile> dataFileMap = dataFileMapReturn.getKey();
-        // delete all orphaned index files
+        // delete all orphaned index files (never happen, but still process just for sure)
         DirectoryUtils.deleteOrphanedIndexFiles(dataFileMap, dbDirectory);
         // load db metadata
         DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
@@ -83,11 +83,23 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         dbMetadata.save(dbDirectory);
         // staleMap (for compaction)
         Map<Integer, Integer> staleDataMap = new ConcurrentHashMap<>();
+        /*
+        last associate data file map, if no data file with file_id <= last associate data file id exists
+        -> delete tombstone file since all associated files have been deleted already (they're compacted)
+         */
+        Map<Integer, Integer> tombstoneLastAssociateDataFileMap = new ConcurrentHashMap<>();
         // indexing
         long maxSequenceNumber = Long.MIN_VALUE;
+        // max file id (to generate new fileId)
+        int maxFileId = dbDirectory.maxFileId(); // maxFileId across all storage files
         ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
         try {
-            Map.Entry<Integer, Long> indexBuildReturn = InternalUtils.buildInMemoryIndex(indexingProcessor, indexMap, staleDataMap, maxFileId, dbDirectory, options);
+            Map.Entry<Integer, Long> indexBuildReturn = InternalUtils.buildInMemoryIndex(
+                    indexingProcessor, indexMap,
+                    staleDataMap, tombstoneLastAssociateDataFileMap,
+                    maxFileId, maxDataFileId,
+                    dbDirectory, options
+            );
             maxFileId = indexBuildReturn.getKey();
             maxSequenceNumber = indexBuildReturn.getValue();
         } finally {

@@ -3,6 +3,7 @@ package com.tuannh.phantom.db.internal.file;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;

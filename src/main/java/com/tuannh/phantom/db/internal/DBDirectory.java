@@ -40,6 +40,10 @@ public class DBDirectory implements Closeable {
         return DirectoryUtils.tombstoneFiles(dir);
     }
 
+    public int maxFileId() {
+        return DirectoryUtils.getMaxFileId(dir);
+    }
+
     public Path path() {
         return path;
     }

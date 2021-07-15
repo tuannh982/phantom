@@ -155,7 +155,9 @@ public class InternalUtils {
             ExecutorService executorService,
             IndexMap indexMap,
             Map<Integer, Integer> staleDataMap,
+            Map<Integer, Integer> tombstoneLastAssociateDataFileMap,
             int maxFileId,
+            int maxDataFileId,
             DBDirectory dbDirectory,
             PhantomDBOptions options
     ) throws IOException {
@@ -224,6 +226,7 @@ public class InternalUtils {
                         // flush current file
                         mergedTombstoneFile.flushToDisk();
                         mergedTombstoneFile.close();
+                        tombstoneLastAssociateDataFileMap.put(mergedTombstoneFile.getFileId(), maxDataFileId);
                         // create new file
                         currentMaxFileId++;
                         mergedTombstoneFile = TombstoneFile.create(currentMaxFileId, dbDirectory, options);
@@ -236,6 +239,9 @@ public class InternalUtils {
                 }
                 tombstoneFile.close();
                 tombstoneFile.delete();
+            }
+            if (mergedTombstoneFile != null) {
+                tombstoneLastAssociateDataFileMap.put(mergedTombstoneFile.getFileId(), maxDataFileId);
             }
         }
         return new AbstractMap.SimpleImmutableEntry<>(currentMaxFileId, maxSequenceNumber);
