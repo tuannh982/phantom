@@ -108,7 +108,7 @@ public class DirectoryUtils {
         return new AbstractMap.SimpleImmutableEntry<>(dbFileMap, maxFileId);
     }
 
-    @SuppressWarnings({"java:S4402", "java:S899", "ResultOfMethodCallIgnored"})
+    @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
     public static void deleteOrphanedIndexFiles(Map<Integer, DBFile> dataFileMap, DBDirectory dbDirectory) {
         File[] indexFiles = dbDirectory.indexFiles();
         for (File file : indexFiles) {

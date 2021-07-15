@@ -166,8 +166,10 @@ public class PhantomDBInternal implements Closeable {
         return dbInternal;
     }
 
+    @SuppressWarnings("java:S107")
     private PhantomDBInternal(
-            DBDirectory dbDirectory, PhantomDBOptions options,
+            DBDirectory dbDirectory,
+            PhantomDBOptions options,
             DBMetadata dbMetadata,
             NavigableMap<Integer, Integer> staleDataMap,
             Map<Integer, DBFile> dataFileMap,

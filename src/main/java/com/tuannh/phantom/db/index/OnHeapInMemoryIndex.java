@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class OnHeapInMemoryIndex extends IndexMap {
+public class OnHeapInMemoryIndex implements IndexMap {
     private final Map<byte[], IndexMetadata> map;
 
     public OnHeapInMemoryIndex() {

@@ -5,13 +5,11 @@ import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBInternal;
 import com.tuannh.phantom.db.internal.file.DBFile;
 import com.tuannh.phantom.db.internal.file.Record;
-import com.tuannh.phantom.db.internal.utils.CompactionUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
-import java.util.NavigableMap;
 
 @Slf4j
 public class CompactionManager implements Closeable {
