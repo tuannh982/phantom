@@ -45,10 +45,13 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
 
     @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
+        log.info("initiating DBDirectory...");
         // db directory
         DBDirectory dbDirectory = new DBDirectory(dir);
+        log.info("DBDirectory initiated");
         // write lock
         RLock writeLock = new RLock();
+        log.info("Building data files map...");
         // index
         IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
         Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
@@ -56,8 +59,12 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         int maxDataFileId = dataFileMapReturn.getValue();
         // data map (for data query)
         Map<Integer, DBFile> dataFileMap = dataFileMapReturn.getKey();
+        log.info("Data files map built");
+        log.info("Deleting orphaned index files...");
         // delete all orphaned index files (never happen, but still process just for sure)
         DirectoryUtils.deleteOrphanedIndexFiles(dataFileMap, dbDirectory);
+        log.info("Orphaned index files deleted");
+        log.info("Loading DBMetadata...");
         // load db metadata
         DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
         if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
@@ -81,6 +88,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         dbMetadata.setMaxFileSize(options.getMaxFileSize());
         // save & reload directory
         dbMetadata.save(dbDirectory);
+        log.info("DBMetadata loaded");
         // staleMap (for compaction)
         Map<Integer, Integer> staleDataMap = new ConcurrentHashMap<>();
         /*
@@ -93,7 +101,9 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
         // max file id (to generate new fileId)
         int maxFileId = dbDirectory.maxFileId(); // maxFileId across all storage files
         ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
+        log.info("Indexing Processor initiated with {} thread(s)", options.getNumberOfIndexingThread());
         try {
+            log.info("Building index...");
             Map.Entry<Integer, Long> indexBuildReturn = InternalUtils.buildInMemoryIndex(
                     indexingProcessor, indexMap,
                     staleDataMap, tombstoneLastAssociateDataFileMap,
@@ -104,6 +114,7 @@ public class PhantomDBInternal implements Closeable { // TODO add compaction man
             maxSequenceNumber = indexBuildReturn.getValue();
         } finally {
             indexingProcessor.shutdown();
+            log.info("Index built");
         }
         // TODO initiate compaction manager
         // TODO impl
