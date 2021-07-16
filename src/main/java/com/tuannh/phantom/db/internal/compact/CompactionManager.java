@@ -140,13 +140,13 @@ public class CompactionManager implements Closeable {
         if (currentDBFile == null) {
             unflushed = 0;
             currentWriteOffset = 0;
-            currentDBFile = DBFile.create(dbInternal.nextFileId(), dbDirectory, options, false);
+            currentDBFile = dbInternal.createNewDBFile();
             dbDirectory.sync();
         } else if (currentWriteOffset + recordSize > options.getMaxFileSize()) {
             currentDBFile.close();
             unflushed = 0;
             currentWriteOffset = 0;
-            currentDBFile = DBFile.create(dbInternal.nextFileId(), dbDirectory, options, false);
+            currentDBFile = dbInternal.createNewDBFile();
             dbDirectory.sync();
         }
     }

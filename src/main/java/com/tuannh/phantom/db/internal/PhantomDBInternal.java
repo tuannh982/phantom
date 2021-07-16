@@ -79,20 +79,24 @@ public class PhantomDBInternal implements Closeable {
         log.info("Orphaned index files deleted");
         log.info("Loading DBMetadata...");
         // load db metadata
-        DBMetadata dbMetadata = DBMetadata.load(dbDirectory, new DBMetadata());
-        if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
-            throw new DBException("could not change max_file_size after DB was created");
-        }
-        if (dbMetadata.isOpen() || dbMetadata.isIoError()) { // last open
-            log.warn("DB was not correctly shutdown last time. Trying to repair data files...");
-            // only have to repair the last data file (one data file, one compacted file)
-            DirectoryUtils.repairLatestDataFile(dataFileMap);
-            // repair last tombstone file
-            DirectoryUtils.repairLatestTombstoneFile(dbDirectory, options);
-            // no compacted tombstone should be exists, so just delete all
-            File[] compactedTombstoneFiles = DirectoryUtils.compactedTombstoneFiles(dbDirectory.file());
-            for (File file : compactedTombstoneFiles) {
-                file.delete();
+        DBMetadata dbMetadata = DBMetadata.load(dbDirectory, null);
+        if (dbMetadata == null) {
+            dbMetadata = new DBMetadata();
+        } else {
+            if (dbMetadata.getMaxFileSize() != options.getMaxFileSize()) {
+                throw new DBException("could not change max_file_size after DB was created");
+            }
+            if (dbMetadata.isOpen() || dbMetadata.isIoError()) { // last open
+                log.warn("DB was not correctly shutdown last time. Trying to repair data files...");
+                // only have to repair the last data file (one data file, one compacted file)
+                DirectoryUtils.repairLatestDataFile(dataFileMap);
+                // repair last tombstone file
+                DirectoryUtils.repairLatestTombstoneFile(dbDirectory, options);
+                // no compacted tombstone should be exists, so just delete all
+                File[] compactedTombstoneFiles = DirectoryUtils.compactedTombstoneFiles(dbDirectory.file());
+                for (File file : compactedTombstoneFiles) {
+                    file.delete();
+                }
             }
         }
         // reset metadata
@@ -113,6 +117,7 @@ public class PhantomDBInternal implements Closeable {
         long maxSequenceNumber = Long.MIN_VALUE;
         // max file id (to generate new fileId)
         int maxFileId = dbDirectory.maxFileId(); // maxFileId across all storage files
+        maxFileId = Math.max(maxFileId, maxDataFileId);
         ExecutorService indexingProcessor = Executors.newFixedThreadPool(options.getNumberOfIndexingThread());
         log.info("Indexing Processor initiated with {} thread(s)", options.getNumberOfIndexingThread());
         try {
@@ -125,9 +130,13 @@ public class PhantomDBInternal implements Closeable {
             );
             maxFileId = indexBuildReturn.getKey();
             maxSequenceNumber = indexBuildReturn.getValue();
+            if (maxSequenceNumber == Long.MIN_VALUE) {
+                maxSequenceNumber = 1;
+            }
         } finally {
             indexingProcessor.shutdown();
             log.info("Index built");
+            log.info("Max fileId = {}, max sequenceNumber = {}", maxFileId, maxSequenceNumber);
         }
         log.info("Initiating Compaction Manager...");
         CompactionManager compactionManager = new CompactionManager(dbDirectory, options, tombstoneLastAssociateDataFileMap);
@@ -141,8 +150,8 @@ public class PhantomDBInternal implements Closeable {
                 indexMap,
                 compactionManager,
                 writeLock,
-                maxSequenceNumber + 1, // skip for safety
-                maxFileId + 1 // skip for safety
+                maxSequenceNumber,
+                maxFileId
         );
         log.info("Submitting files to Compaction Manager");
         List<Integer> toBeRemovedFromStaleMap = new ArrayList<>();
@@ -161,6 +170,7 @@ public class PhantomDBInternal implements Closeable {
             staleDataMap.remove(toBeRemoved);
         }
         log.info("{} files submitted to Compaction Manager", toBeRemovedFromStaleMap.size());
+        // TODO
         log.info("Starting Compaction Manager...");
         compactionManager.start(dbInternal);
         log.info("Compaction Manager started");
@@ -271,11 +281,11 @@ public class PhantomDBInternal implements Closeable {
     }
 
     public long nextSequenceNumber() {
-        return ++sequenceNumber;
+        return sequenceNumber++;
     }
 
     public int nextFileId() {
-        return ++fileId;
+        return fileId++;
     }
 
     private IndexMetadata writeToCurrentDBFile(Record entry) throws IOException {
@@ -288,13 +298,21 @@ public class PhantomDBInternal implements Closeable {
         currentTombstoneFile.write(entry);
     }
 
+    public DBFile createNewDBFile() throws IOException {
+        DBFile file = DBFile.create(nextFileId(), dbDirectory, options, false);
+        if (dataFileMap.putIfAbsent(file.getFileId(), file) != null) {
+            throw new IOException("File already existed");
+        }
+        return file;
+    }
+
     private void rolloverCurrentDBFile(Record entry) throws IOException {
         if (currentDBFile == null) {
-            currentDBFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            currentDBFile = createNewDBFile();
             dbDirectory.sync();
         } else if (currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
             currentDBFile.close();
-            currentDBFile = DBFile.create(nextFileId(), dbDirectory, options, false);
+            currentDBFile = createNewDBFile();
             dbDirectory.sync();
         }
     }

@@ -141,10 +141,12 @@ public class DirectoryUtils {
 
     public static void repairLatestTombstoneFile(DBDirectory dbDirectory, PhantomDBOptions options) throws IOException {
         File[] tombstoneFiles = dbDirectory.tombstoneFiles();
-        File latestFile = tombstoneFiles[tombstoneFiles.length - 1];
-        int fileId = fileId(latestFile, TOMBSTONE_FILE_PATTERN);
-        TombstoneFile tombstoneFile = TombstoneFile.open(fileId, dbDirectory, options);
-        TombstoneFile repaired = tombstoneFile.repairAndOpen();
-        repaired.close();
+        if (tombstoneFiles.length > 0) {
+            File latestFile = tombstoneFiles[tombstoneFiles.length - 1];
+            int fileId = fileId(latestFile, TOMBSTONE_FILE_PATTERN);
+            TombstoneFile tombstoneFile = TombstoneFile.open(fileId, dbDirectory, options);
+            TombstoneFile repaired = tombstoneFile.repairAndOpen();
+            repaired.close();
+        }
     }
 }
