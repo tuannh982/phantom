@@ -136,7 +136,6 @@ public class InternalUtils {
             }
             file.close();
             if (compactedFile != null) {
-                compactedFile.flushToDisk();
                 compactedFile.close();
                 Files.move(compactedFile.path(), file.path(), REPLACE_EXISTING, ATOMIC_MOVE);
             }
@@ -218,7 +217,6 @@ public class InternalUtils {
                         dbDirectory.sync();
                     } else if (mergedTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
                         // flush current file
-                        mergedTombstoneFile.flushToDisk();
                         mergedTombstoneFile.close();
                         tombstoneLastAssociateDataFileMap.put(mergedTombstoneFile.getFileId(), maxDataFileId);
                         // create new file

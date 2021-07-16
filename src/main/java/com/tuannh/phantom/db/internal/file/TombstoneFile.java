@@ -91,7 +91,6 @@ public class TombstoneFile implements Closeable {
             }
             repairFile.write(entry);
         }
-        repairFile.flushToDisk();
         repairFile.close();
         close();
         Files.move(repairFile.path(), path(), REPLACE_EXISTING, ATOMIC_MOVE);

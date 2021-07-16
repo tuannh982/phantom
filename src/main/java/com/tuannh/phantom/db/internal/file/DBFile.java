@@ -89,8 +89,6 @@ public class DBFile implements Closeable {
             }
             repairFile.writeRecord(entry);
         }
-        repairFile.flushToDisk();
-        repairFile.indexFile.flushToDisk();
         repairFile.close();
         close();
         Files.move(repairFile.indexFile.path(), indexFile.path(), REPLACE_EXISTING, ATOMIC_MOVE);
