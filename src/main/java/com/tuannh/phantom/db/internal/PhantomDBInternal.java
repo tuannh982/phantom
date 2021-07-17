@@ -67,7 +67,7 @@ public class PhantomDBInternal implements Closeable {
         log.info("Building data files map...");
         // index
         IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
-        Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 1);
+        Map.Entry<Map<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 0);
         // max data file id (for tombstone compaction)
         int maxDataFileId = dataFileMapReturn.getValue();
         // data map (for data query)
@@ -131,7 +131,7 @@ public class PhantomDBInternal implements Closeable {
             maxFileId = indexBuildReturn.getKey();
             maxSequenceNumber = indexBuildReturn.getValue();
             if (maxSequenceNumber == Long.MIN_VALUE) {
-                maxSequenceNumber = 1;
+                maxSequenceNumber = 0;
             }
         } finally {
             indexingProcessor.shutdown();
@@ -150,8 +150,8 @@ public class PhantomDBInternal implements Closeable {
                 indexMap,
                 compactionManager,
                 writeLock,
-                maxSequenceNumber,
-                maxFileId
+                maxSequenceNumber + 1,
+                maxFileId + 1
         );
         log.info("Submitting files to Compaction Manager");
         List<Integer> toBeRemovedFromStaleMap = new ArrayList<>();
