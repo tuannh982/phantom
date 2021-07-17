@@ -216,7 +216,7 @@ public class InternalUtils {
                         currentMaxFileId++;
                         mergedTombstoneFile = TombstoneFile.create(currentMaxFileId, dbDirectory, options);
                         dbDirectory.sync();
-                    } else if (mergedTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
+                    } else if (mergedTombstoneFile.getWriteOffset() + entry.serializedSize() > options.getMaxTombstoneFileSize()) {
                         // flush current file
                         mergedTombstoneFile.close();
                         tombstoneLastAssociateDataFileMap.put(mergedTombstoneFile.getFileId(), maxDataFileId);

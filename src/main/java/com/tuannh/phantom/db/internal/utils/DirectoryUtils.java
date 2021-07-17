@@ -11,11 +11,9 @@ import lombok.NoArgsConstructor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -84,9 +82,9 @@ public class DirectoryUtils {
         return Integer.MIN_VALUE;
     }
 
-    public static Map.Entry<Map<Integer, DBFile>, Integer> buildDataFileMap(DBDirectory dbDirectory, PhantomDBOptions options, int defaultFileId) throws IOException, DBException {
+    public static Map.Entry<NavigableMap<Integer, DBFile>, Integer> buildDataFileMap(DBDirectory dbDirectory, PhantomDBOptions options, int defaultFileId) throws IOException, DBException {
         // ---------------------Prep   ----------------------------------------------------------------
-        Map<Integer, DBFile> dbFileMap = new ConcurrentHashMap<>();
+        NavigableMap<Integer, DBFile> dbFileMap = new ConcurrentSkipListMap<>();
         int maxFileId = Integer.MIN_VALUE;
         // ---------------------STAGE 1----------------------------------------------------------------
         File[] dataFiles = dbDirectory.dataFiles();

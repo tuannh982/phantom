@@ -7,6 +7,7 @@ import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import com.tuannh.phantom.db.internal.file.DBFile;
 import com.tuannh.phantom.db.internal.file.IndexFileEntry;
 import com.tuannh.phantom.db.internal.file.Record;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
@@ -22,7 +23,6 @@ public class CompactionManager implements Closeable {
     private final DBDirectory dbDirectory;
     private final PhantomDBOptions options;
     private PhantomDBInternal dbInternal;
-    private final Map<Integer, Integer> tombstoneLastAssociateDataFileMap;
     // current DB files (manual control write offset and unflush data)
     private int currentWriteOffset;
     private DBFile currentDBFile;
@@ -35,10 +35,9 @@ public class CompactionManager implements Closeable {
     private boolean started = false;
     private boolean closed = false;
 
-    public CompactionManager(DBDirectory dbDirectory, PhantomDBOptions options, Map<Integer, Integer> tombstoneLastAssociateDataFileMap) {
+    public CompactionManager(DBDirectory dbDirectory, PhantomDBOptions options) {
         this.dbDirectory = dbDirectory;
         this.options = options;
-        this.tombstoneLastAssociateDataFileMap = tombstoneLastAssociateDataFileMap;
         this.compactionQueue = new LinkedBlockingQueue<>();
     }
 
@@ -178,7 +177,7 @@ public class CompactionManager implements Closeable {
                 currentDBFile.flushToDisk();
             }
             dbInternal.markAsCompacted(fileId);
-            // TODO delete tombstone file if tombstoneLastAssociateDataFileMap condition satisfied
+            dbInternal.deleteOrphanedTombstone();
         }
 
         @Override

@@ -22,7 +22,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @Slf4j
 @Getter
 public class TombstoneFile implements Closeable {
-    private static final String TOMBSTONE_FILE_EXTENSION = ".tombstone";
+    public static final String TOMBSTONE_FILE_EXTENSION = ".tombstone";
     private static final String COMPACTED_TOMBSTONE_FILE_EXTENSION = ".tombstonec";
     private static final String TOMBSTONE_REPAIR_FILE_EXTENSION = ".tombstone.repair";
 

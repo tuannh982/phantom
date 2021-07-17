@@ -11,6 +11,7 @@ public class PhantomDBOptions {
     private final int fixedKeySize;
     private final int dataFlushThreshold;
     private final int maxFileSize;
+    private final int maxTombstoneFileSize;
     private final int numberOfIndexingThread;
     private final float compactionThreshold;
     private final Hasher hasher = new Murmur3();

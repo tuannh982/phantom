@@ -22,6 +22,7 @@ public class Test {
                         .dataFlushThreshold(8 * 1024 * 1024)
                         .fixedKeySize(16)
                         .maxFileSize(32 * 1024 * 1024)
+                        .maxTombstoneFileSize(8 * 1024 * 1024)
                 .build()
         );
         Random random = new Random(System.currentTimeMillis());
@@ -30,13 +31,12 @@ public class Test {
         boolean deleted = true;
         long start = System.currentTimeMillis();
         for (int i = 0; i < 5_000_000; i++) {
-            if (i % 100_000 == 0) {
+            if (i % 500_000 == 0) {
                 System.out.println("iteration = " + i);
             }
-            int choice = random.nextInt(10);
-            // 8/10 chance to change value, 2/10 change to delete key
-            if (choice < 8) {
-                byte[] r = new byte[1 + random.nextInt(5)];
+            int choice = random.nextInt(100);
+            if (choice < 80) {
+                byte[] r = new byte[1 + random.nextInt(7)];
                 random.nextBytes(r);
                 if (deleted) {
                     db.putIfAbsent(key, r);
@@ -47,23 +47,16 @@ public class Test {
                 tempValue = r;
             } else {
                 db.delete(key);
-                tempValue = null;
                 deleted = true;
+                tempValue = null;
             }
-            db.get(key); // READ after write
+//            byte[] read = db.get(key);
+//            if (!Arrays.equals(read, tempValue)) {
+//                System.out.println("read wrong, read = " + Arrays.toString(read) + ", actual = " + Arrays.toString(tempValue));
+//                return;
+//            }
         }
-        // last write
-        byte[] r = new byte[1 + random.nextInt(5)];
-        random.nextBytes(r);
-         if (deleted) {
-             db.putIfAbsent(key, r);
-             deleted = false;
-         } else {
-             db.replace(key, r);
-         }
-        tempValue = r;
-        byte[] v = db.get(key);
-        System.out.println(Arrays.toString(v));
+        // done
         System.out.println(Arrays.toString(tempValue));
         long stop = System.currentTimeMillis();
         System.out.println("elapsed time = " + (double)(stop - start) / 1000 + " seconds");
