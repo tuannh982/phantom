@@ -108,6 +108,7 @@ public class InternalUtils {
             this.fileId = file.getFileId();
         }
 
+        @SuppressWarnings("java:S2095")
         @Override
         public Long call() throws Exception {
             // prepare
@@ -143,7 +144,7 @@ public class InternalUtils {
         }
     }
 
-    @SuppressWarnings({"java:S2142", "java:S3776", "java:S107"})
+    @SuppressWarnings({"java:S2142", "java:S3776", "java:S107", "java:S2095"})
     public static Map.Entry<Integer, Long> buildInMemoryIndex(
             ExecutorService executorService,
             IndexMap indexMap,

@@ -8,38 +8,65 @@ import com.tuannh.phantom.db.internal.PhantomDBOptions;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
 
+@SuppressWarnings("all")
 public class Test {
-    public static void main(String[] args) throws DBException, IOException {
+     public static void main(String[] args) throws DBException, IOException {
         String path = "/home/tuannh/Desktop/test";
         DB db = new PhantomDB(
                 new File(path),
                 PhantomDBOptions.builder()
-                        .numberOfIndexingThread(2)
+                        .numberOfIndexingThread(Runtime.getRuntime().availableProcessors())
                         .compactionThreshold(0.5f)
-                        .dataFlushThreshold(4 * 1024 * 1024)
+                        .dataFlushThreshold(8 * 1024 * 1024)
                         .fixedKeySize(16)
-                        .maxFileSize(1024 * 1024 * 1024)
+                        .maxFileSize(32 * 1024 * 1024)
                 .build()
         );
-        byte[] key1 = new byte[] {1,2,3,4};
-        byte[] value1 = new byte[] {99};
-        byte[] value2 = new byte[] {100};
-        //--
-//        boolean b = db.putIfAbsent(key1, value1);
-//        System.out.println(b);
-        byte[] v = db.get(key1);
+        Random random = new Random(System.currentTimeMillis());
+        byte[] key = new byte[] {1,2,3,4};
+        byte[] tempValue = null;
+        boolean deleted = true;
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < 5_000_000; i++) {
+            if (i % 100_000 == 0) {
+                System.out.println("iteration = " + i);
+            }
+            int choice = random.nextInt(10);
+            // 8/10 chance to change value, 2/10 change to delete key
+            if (choice < 8) {
+                byte[] r = new byte[1 + random.nextInt(5)];
+                random.nextBytes(r);
+                if (deleted) {
+                    db.putIfAbsent(key, r);
+                    deleted = false;
+                } else {
+                    db.replace(key, r);
+                }
+                tempValue = r;
+            } else {
+                db.delete(key);
+                tempValue = null;
+                deleted = true;
+            }
+            db.get(key); // READ after write
+        }
+        // last write
+        byte[] r = new byte[1 + random.nextInt(5)];
+        random.nextBytes(r);
+         if (deleted) {
+             db.putIfAbsent(key, r);
+             deleted = false;
+         } else {
+             db.replace(key, r);
+         }
+        tempValue = r;
+        byte[] v = db.get(key);
         System.out.println(Arrays.toString(v));
-//        //--
-//        boolean b1 = db.putIfAbsent(key1, value2);
-//        System.out.println(b1);
-//        byte[] v1 = db.get(key1);
-//        System.out.println(Arrays.toString(v1));
-//        //--
-//        boolean b2 = db.replace(key1, value2);
-//        System.out.println(b2);
-//        byte[] v2 = db.get(key1);
-//        System.out.println(Arrays.toString(v2));
-        db.close(); // TODO fix bug closed channel
+        System.out.println(Arrays.toString(tempValue));
+        long stop = System.currentTimeMillis();
+        System.out.println("elapsed time = " + (double)(stop - start) / 1000 + " seconds");
+        db.close();
     }
 }

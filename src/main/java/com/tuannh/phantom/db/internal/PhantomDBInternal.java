@@ -56,7 +56,7 @@ public class PhantomDBInternal implements Closeable {
     private long sequenceNumber;
     private int fileId;
 
-    @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
+    @SuppressWarnings({"java:S3776", "java:S4042", "java:S899", "java:S2095", "ResultOfMethodCallIgnored"})
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
         log.info("Initiating DBDirectory...");
         // db directory
@@ -202,7 +202,7 @@ public class PhantomDBInternal implements Closeable {
     }
 
     @SuppressWarnings("java:S1168") // no result return null, not empty array
-    public byte[] get(byte[] key) throws DBException, IOException {
+    public byte[] get(byte[] key) throws IOException {
         IndexMetadata metadata = indexMap.get(key);
         if (metadata == null) {
             return null;
@@ -216,7 +216,7 @@ public class PhantomDBInternal implements Closeable {
         }
     }
 
-    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException, IOException {
+    public boolean putIfAbsent(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata metadata = indexMap.get(key);
@@ -234,7 +234,7 @@ public class PhantomDBInternal implements Closeable {
         }
     }
 
-    public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
+    public boolean replace(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata existedMetadata = indexMap.get(key);
@@ -254,7 +254,7 @@ public class PhantomDBInternal implements Closeable {
         }
     }
 
-    public void delete(byte[] key) throws DBException, IOException {
+    public void delete(byte[] key) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata existedMetadata = indexMap.get(key);
@@ -341,7 +341,10 @@ public class PhantomDBInternal implements Closeable {
     public void markDataAsStale(byte[] key, IndexMetadata existedMetadata) {
         int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
         int staleSize = CompactionUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
-        markDataAsStale(existedMetadata.getFileId(), staleSize);
+        int staleFileId = existedMetadata.getFileId();
+        if (staleFileId != currentDBFile.getFileId()) {
+            markDataAsStale(existedMetadata.getFileId(), staleSize);
+        }
     }
 
     public void markAsCompacted(int fileId) {
@@ -365,6 +368,8 @@ public class PhantomDBInternal implements Closeable {
             }
             compactionManager.close();
             dbDirectory.close();
+            dbMetadata.setOpen(false);
+            dbMetadata.setIoError(false);
             dbMetadata.save(dbDirectory);
             // TODO impl
         } finally {

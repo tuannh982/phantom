@@ -139,6 +139,7 @@ public class DirectoryUtils {
         }
     }
 
+    @SuppressWarnings("java:S2095")
     public static void repairLatestTombstoneFile(DBDirectory dbDirectory, PhantomDBOptions options) throws IOException {
         File[] tombstoneFiles = dbDirectory.tombstoneFiles();
         if (tombstoneFiles.length > 0) {

@@ -53,14 +53,14 @@ public class DBDirectory implements Closeable {
     }
 
     public void sync() throws IOException {
-        if (dirChannel != null) {
+        if (dirChannel != null && dirChannel.isOpen()) {
             dirChannel.force(true);
         }
     }
 
     @Override
     public void close() throws IOException {
-        if (dirChannel != null) {
+        if (dirChannel != null && dirChannel.isOpen()) {
             dirChannel.force(true);
             dirChannel.close();
         }

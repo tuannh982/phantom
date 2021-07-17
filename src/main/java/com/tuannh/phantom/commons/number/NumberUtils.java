@@ -21,6 +21,7 @@ public class NumberUtils {
         return x & 0xff;
     }
 
+    @SuppressWarnings("all")
     public static int checkedCast(long value) {
         int result = (int)value;
         if ((long)result != value) {

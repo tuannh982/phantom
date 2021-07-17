@@ -1,5 +1,6 @@
 package com.tuannh.phantom.db.internal.file;
 
+import com.tuannh.phantom.commons.io.FileUtils;
 import com.tuannh.phantom.commons.number.NumberUtils;
 import com.tuannh.phantom.db.internal.DBDirectory;
 import com.tuannh.phantom.db.internal.PhantomDBOptions;
@@ -11,6 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -130,11 +132,13 @@ public class IndexFile implements Closeable {
     }
 
     private class IndexFileIterator implements Iterator<IndexFileEntry> {
+        private final FileChannel iterChannel;
         private final long channelSize;
         private long offset = 0;
 
         public IndexFileIterator() throws IOException {
-            channelSize = channel.size();
+            iterChannel = FileChannel.open(path(), StandardOpenOption.READ);
+            channelSize = iterChannel.size();
         }
 
         @Override
@@ -147,10 +151,10 @@ public class IndexFile implements Closeable {
             if (hasNext()) {
                 try {
                     ByteBuffer headerBuffer = ByteBuffer.allocate(IndexFileEntry.HEADER_SIZE);
-                    offset += channel.read(headerBuffer);
+                    offset += FileUtils.read(iterChannel, offset, headerBuffer);
                     IndexFileEntry.Header header = IndexFileEntry.Header.deserialize(headerBuffer);
                     ByteBuffer dataBuffer = ByteBuffer.allocate(header.getKeySize());
-                    offset += channel.read(dataBuffer);
+                    offset += FileUtils.read(iterChannel, offset, dataBuffer);
                     IndexFileEntry entry = IndexFileEntry.deserialize(dataBuffer, header);
                     if (!entry.verifyChecksum()) {
                         throw new IOException("checksum failed");
@@ -160,6 +164,13 @@ public class IndexFile implements Closeable {
                     log.error("index file corrupted ", e);
                     offset = channelSize;
                 }
+            }
+            try {
+                if (iterChannel != null && iterChannel.isOpen()) {
+                    iterChannel.close();
+                }
+            } catch (IOException e) {
+                log.error(e.getMessage(), e);
             }
             throw new NoSuchElementException();
         }
