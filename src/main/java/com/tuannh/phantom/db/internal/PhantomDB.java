@@ -17,22 +17,27 @@ public class PhantomDB implements DB {
     }
 
     @Override
-    public byte[] get(byte[] key) throws DBException, IOException {
+    public byte[] get(byte[] key) throws IOException {
         return internal.get(key);
     }
 
     @Override
-    public boolean putIfAbsent(byte[] key, byte[] value) throws DBException, IOException {
+    public boolean put(byte[] key, byte[] value) throws IOException {
+        return internal.put(key, value);
+    }
+
+    @Override
+    public boolean putIfAbsent(byte[] key, byte[] value) throws IOException {
         return internal.putIfAbsent(key, value);
     }
 
     @Override
-    public boolean replace(byte[] key, byte[] value) throws DBException, IOException {
+    public boolean replace(byte[] key, byte[] value) throws IOException {
         return internal.replace(key, value);
     }
 
     @Override
-    public void delete(byte[] key) throws DBException, IOException {
+    public void delete(byte[] key) throws IOException {
         internal.delete(key);
     }
 

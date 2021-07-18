@@ -216,6 +216,19 @@ public class PhantomDBInternal implements Closeable {
         }
     }
 
+    public boolean put(byte[] key, byte[] value) throws IOException {
+        boolean rlock = writeLock.lock();
+        try {
+            Record entry = new Record(key, value);
+            entry.getHeader().setSequenceNumber(nextSequenceNumber());
+            IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
+            indexMap.put(key, indexMetadata);
+            return true;
+        } finally {
+            writeLock.release(rlock);
+        }
+    }
+
     public boolean putIfAbsent(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
@@ -224,7 +237,7 @@ public class PhantomDBInternal implements Closeable {
                 Record entry = new Record(key, value);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
-                indexMap.put(key, indexMetadata);
+                indexMap.putIfAbsent(key, indexMetadata);
                 return true;
             } else {
                 return false; // already exists
@@ -244,7 +257,7 @@ public class PhantomDBInternal implements Closeable {
                 Record entry = new Record(key, value);
                 entry.getHeader().setSequenceNumber(nextSequenceNumber());
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
-                indexMap.put(key, indexMetadata);
+                indexMap.replace(key, existedMetadata, indexMetadata);
                 // mark previous version as stale data
                 markDataAsStale(key, existedMetadata);
                 return true;
@@ -268,15 +281,6 @@ public class PhantomDBInternal implements Closeable {
             }
         } finally {
             writeLock.release(rlock);
-        }
-    }
-
-    public void snapshot(File snapshotDir) throws IOException {
-        // TODO force compaction & merge tombstone files
-        File[] files = FileUtils.ls(dbDirectory.file(), DirectoryUtils.STORAGE_FILE_PATTERN);
-        for (File file : files) {
-            Path dest = Paths.get(snapshotDir.getAbsolutePath(), file.getName());
-            FileUtils.copy(file.toPath(), dest);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.tuannh.phantom;
 
+import com.tuannh.phantom.commons.number.NumberUtils;
 import com.tuannh.phantom.db.DB;
 import com.tuannh.phantom.db.DBException;
 import com.tuannh.phantom.db.internal.PhantomDB;
@@ -28,7 +29,6 @@ public class Test {
         Random random = new Random(System.currentTimeMillis());
         byte[] key = new byte[] {1,2,3,4};
         byte[] tempValue = null;
-        boolean deleted = true;
         long start = System.currentTimeMillis();
         for (int i = 0; i < 5_000_000; i++) {
             if (i % 500_000 == 0) {
@@ -38,23 +38,17 @@ public class Test {
             if (choice < 80) {
                 byte[] r = new byte[1 + random.nextInt(7)];
                 random.nextBytes(r);
-                if (deleted) {
-                    db.putIfAbsent(key, r);
-                    deleted = false;
-                } else {
-                    db.replace(key, r);
-                }
+                db.put(key, r);
                 tempValue = r;
             } else {
                 db.delete(key);
-                deleted = true;
                 tempValue = null;
             }
-//            byte[] read = db.get(key);
-//            if (!Arrays.equals(read, tempValue)) {
-//                System.out.println("read wrong, read = " + Arrays.toString(read) + ", actual = " + Arrays.toString(tempValue));
-//                return;
-//            }
+            byte[] read = db.get(key);
+            if (!Arrays.equals(read, tempValue)) {
+                System.out.println("read wrong, read = " + Arrays.toString(read) + ", actual = " + Arrays.toString(tempValue));
+                return;
+            }
         }
         // done
         System.out.println(Arrays.toString(tempValue));

@@ -60,37 +60,10 @@ public class CompactionManager implements Closeable {
     }
 
     public boolean queueForCompaction(DBFile fileToCompact) {
-        if (started && !closed) {
+        if (!closed) {
             return compactionQueue.offer(fileToCompact);
         } else {
             return false;
-        }
-    }
-
-    private boolean isFresh(IndexMetadata indexMetadata, int fileId, int valueOffset, int valueSize, long sequenceNumber) {
-        if (indexMetadata != null) {
-            return
-                    indexMetadata.getFileId() == fileId &&
-                    indexMetadata.getValueOffset() == valueOffset &&
-                    indexMetadata.getValueSize() == valueSize &&
-                    indexMetadata.getSequenceNumber() == sequenceNumber;
-        } else {
-            return false;
-        }
-    }
-
-    private void rolloverCurrentDBFile(int recordSize) throws IOException {
-        if (currentDBFile == null) {
-            unflushed = 0;
-            currentWriteOffset = 0;
-            currentDBFile = dbInternal.createNewDBFile();
-            dbDirectory.sync();
-        } else if (currentWriteOffset + recordSize > options.getMaxFileSize()) {
-            currentDBFile.close();
-            unflushed = 0;
-            currentWriteOffset = 0;
-            currentDBFile = dbInternal.createNewDBFile();
-            dbDirectory.sync();
         }
     }
 
@@ -180,11 +153,39 @@ public class CompactionManager implements Closeable {
             dbInternal.deleteOrphanedTombstone();
         }
 
+        private void rolloverCurrentDBFile(int recordSize) throws IOException {
+            if (currentDBFile == null) {
+                unflushed = 0;
+                currentWriteOffset = 0;
+                currentDBFile = dbInternal.createNewDBFile();
+                dbDirectory.sync();
+            } else if (currentWriteOffset + recordSize > options.getMaxFileSize()) {
+                currentDBFile.close();
+                unflushed = 0;
+                currentWriteOffset = 0;
+                currentDBFile = dbInternal.createNewDBFile();
+                dbDirectory.sync();
+            }
+        }
+
+        private boolean isFresh(IndexMetadata indexMetadata, int fileId, int valueOffset, int valueSize, long sequenceNumber) {
+            if (indexMetadata != null) {
+                return
+                        indexMetadata.getFileId() == fileId &&
+                                indexMetadata.getValueOffset() == valueOffset &&
+                                indexMetadata.getValueSize() == valueSize &&
+                                indexMetadata.getSequenceNumber() == sequenceNumber;
+            } else {
+                return false;
+            }
+        }
+
+        @SuppressWarnings("java:S2142")
         @Override
         public void run() {
             while (started && !closed) {
                 try {
-                    DBFile file = compactionQueue.poll(5, TimeUnit.SECONDS);
+                    DBFile file = compactionQueue.poll(1, TimeUnit.SECONDS);
                     if (file != null) {
                         try {
                             log.info("Compacting {}", file.file().getName());
