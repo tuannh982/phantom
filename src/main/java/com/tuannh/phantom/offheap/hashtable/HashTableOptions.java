@@ -6,8 +6,9 @@ import lombok.Getter;
 @Getter
 @Builder
 public class HashTableOptions<V> {
-    private int memoryChunkSize;
-    private int fixedKeySize;
-    private int fixedValueSize;
-    private ValueSerializer<V> valueSerializer;
+    private final int memoryChunkSize;
+    private final int fixedKeySize;
+    private final int fixedValueSize;
+    private final int entryTableSizePerSegment;
+    private final ValueSerializer<V> valueSerializer;
 }

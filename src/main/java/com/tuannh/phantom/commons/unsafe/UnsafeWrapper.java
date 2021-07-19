@@ -1,5 +1,6 @@
 package com.tuannh.phantom.commons.unsafe;
 
+import com.tuannh.phantom.commons.os.OSConstants;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -25,7 +26,7 @@ public class UnsafeWrapper {
             field.setAccessible(true);
             UNSAFE = (sun.misc.Unsafe) field.get(null);
             // checks
-            if (UNSAFE.addressSize() != 8) {
+            if (UNSAFE.addressSize() != OSConstants.WORD_SIZE) {
                 throw new IllegalStateException("only support 8 bytes address size");
             }
             // init direct buffer

@@ -44,4 +44,13 @@ public class NumberUtils {
             }
         }
     }
+
+    public static int bitCount(long x) {
+        int bitCount = 0;
+        while (x != 0) {
+            x >>>= 1;
+            bitCount++;
+        }
+        return bitCount;
+    }
 }

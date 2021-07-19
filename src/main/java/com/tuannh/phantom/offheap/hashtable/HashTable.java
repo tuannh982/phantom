@@ -1,11 +1,12 @@
 package com.tuannh.phantom.offheap.hashtable;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 public interface HashTable<V> extends Closeable {
-    boolean put(KeyBuffer keyBuffer, V value);
-    boolean putIfAbsent(KeyBuffer keyBuffer, V value);
-    boolean replace(KeyBuffer keyBuffer, V value);
-    boolean delete(KeyBuffer keyBuffer);
-    V get(KeyBuffer keyBuffer);
+    V get(KeyBuffer keyBuffer) throws IOException;
+    void put(KeyBuffer keyBuffer, V value) throws IOException;
+    V putIfAbsent(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException;
+    boolean replace(KeyBuffer keyBuffer, V value) throws IOException;
+    void delete(KeyBuffer keyBuffer) throws IOException;
 }
