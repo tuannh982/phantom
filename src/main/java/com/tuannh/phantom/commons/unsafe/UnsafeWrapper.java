@@ -109,6 +109,10 @@ public class UnsafeWrapper {
         return UNSAFE.getInt(null, address + offset);
     }
 
+    public static void putShort(long address, long offset, short value) {
+        UNSAFE.putShort(null, address + offset, value);
+    }
+
     public static short getShort(long address, long offset) {
         return UNSAFE.getShort(null, address + offset);
     }

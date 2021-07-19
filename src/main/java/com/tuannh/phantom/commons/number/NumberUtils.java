@@ -45,6 +45,10 @@ public class NumberUtils {
         }
     }
 
+    public static boolean isPowerOf2(int x) {
+        return (x & (x - 1)) == 0;
+    }
+
     public static int bitCount(long x) {
         int bitCount = 0;
         while (x != 0) {

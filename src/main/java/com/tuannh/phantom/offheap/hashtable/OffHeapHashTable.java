@@ -24,6 +24,9 @@ public class OffHeapHashTable<V> implements HashTable<V> {
     public OffHeapHashTable(HashTableOptions<V> options) {
         this.options = options;
         segmentCount = NumberUtils.roundUpToPowerOf2(2 * Runtime.getRuntime().availableProcessors());
+        if (!NumberUtils.isPowerOf2(segmentCount)) {
+            throw new IllegalStateException("segment count must be power of 2");
+        }
         segments = new ArrayList<>(segmentCount);
         for (int i = 0; i < segmentCount; i++) {
             segments.add(new Segment<>(

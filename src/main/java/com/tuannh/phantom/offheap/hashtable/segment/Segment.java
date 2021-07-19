@@ -31,13 +31,23 @@ public class Segment<V> implements Closeable {
         this.entryTableSizePerSegment = entryTableSizePerSegment;
         this.lock = new RLock();
         //
+        this.entryTable = EntryTable.allocate(entryTableSizePerSegment);
         this.chunks = new ArrayList<>();
+        this.currentChunkIndex = -1;
     }
 
     public V get(KeyBuffer keyBuffer) throws IOException {
         boolean rlock = lock.lock();
         try {
-            // TODO
+            Address address = entryTable.getEntry(keyBuffer.hash());
+            while (address.getChunkIndex() >= 0) {
+                Chunk chunk = chunks.get(address.getChunkIndex());
+                if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
+                    return valueSerializer.deserialize(chunk.valueByteBuffer(address.getChunkOffset()));
+                }
+                address = chunk.getNextAddress(address);
+            }
+            return null;
         } finally {
             lock.release(rlock);
         }
