@@ -7,11 +7,12 @@ import com.tuannh.phantom.offheap.hashtable.ValueSerializer;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Segment<V> implements Closeable {
     // primary
-    private final int fixedKeySize;
+    private final int maxKeySize;
     private final int fixedValueSize;
     private final int memoryChunkSize;
     private final ValueSerializer<V> valueSerializer;
@@ -23,8 +24,8 @@ public class Segment<V> implements Closeable {
     private final List<Chunk> chunks;
     private int currentChunkIndex;
 
-    public Segment(int fixedKeySize, int fixedValueSize, int memoryChunkSize, ValueSerializer<V> valueSerializer, int entryTableSizePerSegment) {
-        this.fixedKeySize = fixedKeySize;
+    public Segment(int maxKeySize, int fixedValueSize, int memoryChunkSize, ValueSerializer<V> valueSerializer, int entryTableSizePerSegment) {
+        this.maxKeySize = maxKeySize;
         this.fixedValueSize = fixedValueSize;
         this.memoryChunkSize = memoryChunkSize;
         this.valueSerializer = valueSerializer;
@@ -45,7 +46,7 @@ public class Segment<V> implements Closeable {
                 if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
                     return valueSerializer.deserialize(chunk.valueByteBuffer(address.getChunkOffset()));
                 }
-                address = chunk.getNextAddress(address);
+                address = chunk.getNextAddress(address.getChunkOffset());
             }
             return null;
         } finally {
@@ -91,6 +92,10 @@ public class Segment<V> implements Closeable {
 
     @Override
     public void close() throws IOException {
-        // TODO
+        entryTable.close();
+        for (Chunk chunk : chunks) {
+            chunk.close();
+        }
+        Collections.fill(chunks, null);
     }
 }

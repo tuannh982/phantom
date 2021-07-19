@@ -30,7 +30,7 @@ public class OffHeapHashTable<V> implements HashTable<V> {
         segments = new ArrayList<>(segmentCount);
         for (int i = 0; i < segmentCount; i++) {
             segments.add(new Segment<>(
-                    options.getFixedKeySize(),
+                    options.getMaxKeySize(),
                     options.getFixedValueSize(),
                     options.getMemoryChunkSize(),
                     options.getValueSerializer(),

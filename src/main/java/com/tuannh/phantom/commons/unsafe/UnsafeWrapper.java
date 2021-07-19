@@ -124,4 +124,48 @@ public class UnsafeWrapper {
     public static byte getByte(long address, long offset) {
         return UNSAFE.getByte(null, address + offset);
     }
+
+    // misc.
+
+    public static boolean isEquals(long address, long offset, byte[] arr) {
+        int ptr = 0;
+        int len = arr.length;
+        // long
+        while (len - ptr >= Long.BYTES) {
+            long fromAddr = getLong(address, offset + ptr);
+            long fromByteArr = UNSAFE.getLong(arr, (long)sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET + ptr);
+            if (fromAddr != fromByteArr) {
+                return false;
+            }
+            ptr += Long.BYTES;
+        }
+        // int
+        while (len - ptr >= Integer.BYTES) {
+            int fromAddr = getInt(address, offset + ptr);
+            int fromByteArr = UNSAFE.getInt(arr, (long)sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET + ptr);
+            if (fromAddr != fromByteArr) {
+                return false;
+            }
+            ptr += Integer.BYTES;
+        }
+        // short
+        while (len - ptr >= Short.BYTES) {
+            short fromAddr = getShort(address, offset + ptr);
+            short fromByteArr = UNSAFE.getShort(arr, (long)sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET + ptr);
+            if (fromAddr != fromByteArr) {
+                return false;
+            }
+            ptr += Short.BYTES;
+        }
+        // byte
+        while (len - ptr >= Byte.BYTES) {
+            byte fromAddr = getByte(address, offset + ptr);
+            byte fromByteArr = UNSAFE.getByte(arr, (long)sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET + ptr);
+            if (fromAddr != fromByteArr) {
+                return false;
+            }
+            ptr += Byte.BYTES;
+        }
+        return true;
+    }
 }
