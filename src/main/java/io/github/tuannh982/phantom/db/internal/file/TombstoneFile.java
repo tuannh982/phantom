@@ -180,10 +180,12 @@ public class TombstoneFile implements Closeable {
             if (hasNext()) {
                 try {
                     ByteBuffer headerBuffer = ByteBuffer.allocate(TombstoneFileEntry.HEADER_SIZE);
-                    offset += FileUtils.read(iterChannel, offset, headerBuffer);
+                    // offset += FileUtils.read(iterChannel, offset, headerBuffer);
+                    offset += channel.read(headerBuffer);
                     TombstoneFileEntry.Header header = TombstoneFileEntry.Header.deserialize(headerBuffer);
                     ByteBuffer dataBuffer = ByteBuffer.allocate(header.getKeySize());
-                    offset += FileUtils.read(iterChannel, offset, dataBuffer);
+                    // offset += FileUtils.read(iterChannel, offset, dataBuffer);
+                    offset += channel.read(dataBuffer);
                     TombstoneFileEntry entry = TombstoneFileEntry.deserialize(dataBuffer, header);
                     if (!entry.verifyChecksum()) {
                         throw new IOException("checksum failed");

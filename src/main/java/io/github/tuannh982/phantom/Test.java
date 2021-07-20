@@ -17,23 +17,32 @@ public class Test {
          DB db = new PhantomDB(
                  new File(path),
                  PhantomDBOptions.builder()
-                         .numberOfIndexingThread(Runtime.getRuntime().availableProcessors())
+                         .numberOfIndexingThread(2 * Runtime.getRuntime().availableProcessors())
                          .compactionThreshold(0.5f)
                          .dataFlushThreshold(8 * 1024 * 1024)
-                         .maxKeySize(16)
+                         .maxKeySize(8)
                          .maxFileSize(32 * 1024 * 1024)
                          .maxTombstoneFileSize(8 * 1024 * 1024)
+                         .offHeapHashTable(true)
+                         .estimatedMaxKeyCount(16)
+                         .memoryChunkSize(4 * 1024 * 1024)
                          .build()
          );
          Random random = new Random(System.currentTimeMillis());
          byte[] key = new byte[] {1,2,3,4};
+         if (true) {
+             byte[] read = db.get(key);
+             System.out.println(Arrays.toString(read));
+             db.close();
+             return;
+         }
          byte[] tempValue = null;
          long start = System.currentTimeMillis();
          long putCount = 0;
          long delCount = 0;
          long readCount = 0;
          int putChance = 100;
-         int iterations = 5_000_000;
+         int iterations = 500_000;
          for (int i = 0; i < iterations; i++) {
              if (i % 500_000 == 0) {
                  System.out.println("iteration = " + i);

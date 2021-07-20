@@ -396,7 +396,6 @@ public class PhantomDBInternal implements Closeable {
     public void close() throws IOException {
         boolean rlock = writeLock.lock();
         try {
-            indexMap.close();
             if (currentDBFile != null) {
                 currentDBFile.close();
             }
@@ -408,6 +407,9 @@ public class PhantomDBInternal implements Closeable {
             dbMetadata.setOpen(false);
             dbMetadata.setIoError(false);
             dbMetadata.save(dbDirectory);
+            if (!options.isOffHeapHashTable()) {
+                indexMap.close();
+            }
         } finally {
             writeLock.release(rlock);
         }

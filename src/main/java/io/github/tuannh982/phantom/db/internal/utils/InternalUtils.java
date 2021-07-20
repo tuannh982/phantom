@@ -40,6 +40,7 @@ public class InternalUtils {
         @SuppressWarnings("java:S135")
         @Override
         public Long call() throws Exception {
+            log.info("IndexFileProcessTask with fileId = " + fileId + " started.");
             long maxSequenceNumber = Long.MIN_VALUE;
             Iterator<IndexFileEntry> iterator = file.iterator();
             while (iterator.hasNext()) {
@@ -62,7 +63,7 @@ public class InternalUtils {
                         use while true since one metadata (existedMetadata, metadata) need to be evicted
                          */
                         IndexMetadata existedMetadata = indexMap.get(key);
-                        if (existedMetadata.getSequenceNumber() > sequenceNumber) {
+                        if (existedMetadata.getSequenceNumber() >= sequenceNumber) {
                             // stale data, add to stale map to compact later
                             CompactionUtils.recordStaleData(staleDataMap, fileId, recordSize);
                             break;
@@ -111,6 +112,7 @@ public class InternalUtils {
         @SuppressWarnings("java:S2095")
         @Override
         public Long call() throws Exception {
+            log.info("TombstoneFileProcessTask with fileId = " + fileId + " started.");
             // prepare
             long maxSequenceNumber = Long.MIN_VALUE;
             Iterator<TombstoneFileEntry> iterator = file.iterator();

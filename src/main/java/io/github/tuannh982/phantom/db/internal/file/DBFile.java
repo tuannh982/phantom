@@ -227,10 +227,12 @@ public class DBFile implements Closeable {
             if (hasNext()) {
                 try {
                     ByteBuffer headerBuffer = ByteBuffer.allocate(Record.HEADER_SIZE);
-                    offset += FileUtils.read(iterChannel, offset, headerBuffer);
+                    // offset += FileUtils.read(iterChannel, offset, headerBuffer);
+                    offset += channel.read(headerBuffer);
                     Record.Header header = Record.Header.deserialize(headerBuffer);
                     ByteBuffer dataBuffer = ByteBuffer.allocate(header.getKeySize() + header.getValueSize());
-                    offset += FileUtils.read(iterChannel, offset, dataBuffer);
+                    // offset += FileUtils.read(iterChannel, offset, dataBuffer);
+                    offset += channel.read(dataBuffer);
                     Record entry = Record.deserialize(dataBuffer, header);
                     if (!entry.verifyChecksum()) {
                         throw new IOException("checksum failed");

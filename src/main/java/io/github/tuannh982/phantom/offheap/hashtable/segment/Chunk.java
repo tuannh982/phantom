@@ -71,7 +71,7 @@ public class Chunk implements Closeable {
 
     public boolean compareValue(int offset, byte[] value) {
         int valueOffset = offset + DATA_OFFSET + maxKeySize;
-        return maxKeySize == value.length && UnsafeWrapper.isEquals(address, valueOffset, value);
+        return fixedValueSize == value.length && UnsafeWrapper.isEquals(address, valueOffset, value);
     }
 
     public void writeEntry(int offset, byte[] key, byte[] value, Address nextAddress) {
