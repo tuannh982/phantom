@@ -54,6 +54,11 @@ public class Chunk implements Closeable {
         UnsafeWrapper.memcpy(key, 0, address, (long)offset + DATA_OFFSET, key.length);
     }
 
+    public boolean compareKey(int offset, byte[] key) {
+        int keyLength = UnsafeWrapper.getByte(address, (long)offset + KEY_LENGTH_OFFSET);
+        return keyLength == key.length && UnsafeWrapper.isEquals(address, (long)offset + DATA_OFFSET, key);
+    }
+
     public ByteBuffer readValue(int offset) {
         int valueOffset = offset + DATA_OFFSET + maxKeySize;
         return UnsafeWrapper.directBuffer(address, valueOffset, fixedValueSize, true);

@@ -13,7 +13,7 @@ public class Address {
     public static final int CHUNK_INDEX_OFFSET = 0;
     public static final int CHUNK_OFFSET_OFFSET = 2;
 
-    public static final Address NULL_ADDRESS = new Address((short) -1, -1); // 0xffff, 0xffffffff
+    public static final Address NULL_VALUE = new Address((short) -1, -1); // 0xffff, 0xffffffff
 
     private final short chunkIndex;
     private final int chunkOffset;
@@ -27,5 +27,9 @@ public class Address {
         short chunkIndex = UnsafeWrapper.getShort(address, CHUNK_INDEX_OFFSET);
         int chunkOffset = UnsafeWrapper.getInt(address, CHUNK_OFFSET_OFFSET);
         return new Address(chunkIndex, chunkOffset);
+    }
+
+    public boolean isNullAddress() {
+        return chunkIndex < 0 || chunkOffset < 0;
     }
 }

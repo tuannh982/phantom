@@ -23,6 +23,8 @@ public class Segment<V> implements Closeable {
     private EntryTable entryTable;
     private final List<Chunk> chunks;
     private int currentChunkIndex;
+    // free list
+    private final FreeList freeList;
 
     public Segment(int maxKeySize, int fixedValueSize, int memoryChunkSize, ValueSerializer<V> valueSerializer, int entryTableSizePerSegment) {
         this.maxKeySize = maxKeySize;
@@ -35,16 +37,17 @@ public class Segment<V> implements Closeable {
         this.entryTable = EntryTable.allocate(entryTableSizePerSegment);
         this.chunks = new ArrayList<>();
         this.currentChunkIndex = -1;
+        this.freeList = new FreeList();
     }
 
     public V get(KeyBuffer keyBuffer) throws IOException {
         boolean rlock = lock.lock();
         try {
             Address address = entryTable.getEntry(keyBuffer.hash());
-            while (address.getChunkIndex() >= 0) {
+            while (!address.isNullAddress()) {
                 Chunk chunk = chunks.get(address.getChunkIndex());
                 if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
-                    return valueSerializer.deserialize(chunk.valueByteBuffer(address.getChunkOffset()));
+                    return valueSerializer.deserialize(chunk.readValue(address.getChunkOffset()));
                 }
                 address = chunk.getNextAddress(address.getChunkOffset());
             }
@@ -97,5 +100,41 @@ public class Segment<V> implements Closeable {
             chunk.close();
         }
         Collections.fill(chunks, null);
+    }
+
+    private class FreeList {
+        private Address freeListPtr = Address.NULL_VALUE;
+        private int size = 0;
+
+        public void offer(Address address) {
+            Chunk chunk = chunks.get(address.getChunkIndex());
+            chunk.setNextAddress(address.getChunkOffset(), freeListPtr);
+            freeListPtr = address;
+            size++;
+        }
+
+        public Address poll() {
+            if (freeListPtr.isNullAddress()) {
+                return freeListPtr;
+            } else {
+                Address ret = freeListPtr;
+                Chunk chunk = chunks.get(freeListPtr.getChunkIndex());
+                freeListPtr = chunk.getNextAddress(freeListPtr.getChunkOffset());
+                size--;
+                return ret;
+            }
+        }
+
+        public Address peek() {
+            return freeListPtr;
+        }
+
+        public int size() {
+            return size;
+        }
+
+        public void clear() {
+            freeListPtr = Address.NULL_VALUE;
+        }
     }
 }
