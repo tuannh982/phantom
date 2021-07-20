@@ -87,7 +87,24 @@ public class Segment<V> implements Closeable {
     public void delete(KeyBuffer keyBuffer) throws IOException {
         boolean rlock = lock.lock();
         try {
-            // TODO
+            Address previousAddress = null;
+            Address address = entryTable.getEntry(keyBuffer.hash());
+            while (!address.isNullAddress()) {
+                Chunk chunk = chunks.get(address.getChunkIndex());
+                Address nextAddress = chunk.getNextAddress(address.getChunkOffset());
+                if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
+                    // remove address by short circuit the link between previous address and next address
+                    if (previousAddress == null) {
+                        // current address is entry table head, so just overwrite the entry table
+                        entryTable.setEntry(keyBuffer.hash(), nextAddress);
+                    } else {
+                        chunks.get(previousAddress.getChunkIndex()).setNextAddress(previousAddress.getChunkOffset(), nextAddress);
+                        freeList.offer(address); // add address to free list
+                    }
+                }
+                previousAddress = address;
+                address = nextAddress;
+            }
         } finally {
             lock.release(rlock);
         }
