@@ -9,9 +9,6 @@ the name "Halo" (belongs to the light) from HaloDB.
 The design principles of Phantom is old and simple. It uses log-structured data files and hash index (like HaloDB) to 
 achieve the high write workload yet still maintain low latency access with the cost of no range scan support.
 
-Moreover, Phantom has some native features supported such as transaction support and data replication which 
-some of the other embedded databases do not have such as RocksDB or LevelDB.
-
 ## TODOs
 - Testing
   - Unit test
