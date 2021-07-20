@@ -32,12 +32,14 @@ public class Test {
          long putCount = 0;
          long delCount = 0;
          long readCount = 0;
-         for (int i = 0; i < 5_000_000; i++) {
+         int putChance = 100;
+         int iterations = 5_000_000;
+         for (int i = 0; i < iterations; i++) {
              if (i % 500_000 == 0) {
                  System.out.println("iteration = " + i);
              }
              int choice = random.nextInt(100);
-             if (choice < 80) {
+             if (choice < putChance) {
                  byte[] r = new byte[1 + random.nextInt(7)];
                  random.nextBytes(r);
                  db.put(key, r);
@@ -68,7 +70,8 @@ public class Test {
          db.close();
          double timeInSeconds = (double)(stop - start) / 1000;
          long totalOpCount = readCount + putCount + delCount;
-         System.out.println("Single thread test, 80% put, 20% delete, read after put or delete");
+         System.out.println(String.format("Single thread test, %d%% put, %d%% delete, read after put or delete", putChance, 100 - putChance));
+         System.out.println(String.format("Run %d iterations", iterations));
          System.out.println(String.format("elapsed time = %.4f, total operations = %d, ops = %.4f",
                  timeInSeconds, totalOpCount, (double)totalOpCount / timeInSeconds)
          );
