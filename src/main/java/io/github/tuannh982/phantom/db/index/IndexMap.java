@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 public interface IndexMap extends Closeable {
-    IndexMetadata get(byte[] key);
+    IndexMetadata get(byte[] key) throws IOException;
     void put(byte[] key, IndexMetadata metadata) throws IOException;
     IndexMetadata putIfAbsent(byte[] key, IndexMetadata metadata) throws IOException;
     boolean replace(byte[] key, IndexMetadata oldValue, IndexMetadata newValue) throws IOException;

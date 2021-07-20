@@ -4,10 +4,12 @@ import io.github.tuannh982.phantom.commons.unsafe.UnsafeWrapper;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
+@ToString
 public class Address {
     public static final int SERIALIZED_SIZE = 2 + 4; // chunkIndex(2), chunkOffset(4)
     public static final int CHUNK_INDEX_OFFSET = 0;

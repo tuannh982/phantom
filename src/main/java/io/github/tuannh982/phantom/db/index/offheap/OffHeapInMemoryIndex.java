@@ -15,16 +15,19 @@ public class OffHeapInMemoryIndex implements IndexMap {
     private final OffHeapHashTable<IndexMetadata> hashTable;
     private final Hasher hasher = new Murmur3();
 
-    public OffHeapInMemoryIndex(long estimatedMaxKeyCount, int maxKeySize, int fixedValueSize, int memoryChunkSize) {
+    public OffHeapInMemoryIndex(long estimatedMaxKeyCount, int maxKeySize, int memoryChunkSize) {
         int segmentCount = NumberUtils.roundUpToPowerOf2(2 * Runtime.getRuntime().availableProcessors());
         int entryTableSizePerSegment = 1 << 30;
         long e = estimatedMaxKeyCount / segmentCount;
         if (e < (1 << 30)) {
             entryTableSizePerSegment = (int) e;
         }
+        if (entryTableSizePerSegment < 256) {
+            entryTableSizePerSegment = 256;
+        }
         HashTableOptions<IndexMetadata> hashTableOptions = HashTableOptions.<IndexMetadata>builder()
                 .maxKeySize(maxKeySize)
-                .fixedValueSize(fixedValueSize)
+                .fixedValueSize(IndexMetadata.METADATA_SIZE)
                 .memoryChunkSize(memoryChunkSize)
                 .segmentCount(segmentCount)
                 .entryTableSizePerSegment(entryTableSizePerSegment)
@@ -34,8 +37,8 @@ public class OffHeapInMemoryIndex implements IndexMap {
     }
 
     @Override
-    public IndexMetadata get(byte[] key) {
-        return null;
+    public IndexMetadata get(byte[] key) throws IOException {
+        return hashTable.get(new KeyBuffer(key, hasher));
     }
 
     @Override

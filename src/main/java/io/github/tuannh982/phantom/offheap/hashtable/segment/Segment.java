@@ -70,6 +70,7 @@ public class Segment<V> implements Closeable {
                 Chunk chunk = chunks.get(address.getChunkIndex());
                 if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
                     chunk.setValue(address.getChunkOffset(), serializedValue);
+                    return;
                 }
                 address = chunk.getNextAddress(address.getChunkOffset());
             }
@@ -99,7 +100,7 @@ public class Segment<V> implements Closeable {
         }
     }
 
-    private void write(long hash, byte[] key, byte[] value, Address entryTableEntry) {
+    private void write(long hash, byte[] key, byte[] value, Address entryTableEntry) { // TODO investigate later
         Address newHeadAddress = null;
         if (freeList.size() > 0) {
             Address freeAddress = freeList.poll();

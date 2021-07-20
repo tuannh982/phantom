@@ -45,7 +45,14 @@ public class Test {
              }
              byte[] read = db.get(key);
              if (!Arrays.equals(read, tempValue)) {
-                 System.out.println("read wrong, read = " + Arrays.toString(read) + ", actual = " + Arrays.toString(tempValue));
+                 System.out.println(
+                         String.format(
+                                 "read wrong at iteration %d, read = %s, actual = %s",
+                                 i,
+                                 Arrays.toString(read),
+                                 Arrays.toString(tempValue)
+                         )
+                 );
                  return;
              }
          }

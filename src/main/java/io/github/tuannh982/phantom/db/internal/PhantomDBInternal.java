@@ -1,6 +1,7 @@
 package io.github.tuannh982.phantom.db.internal;
 
 import io.github.tuannh982.phantom.commons.concurrent.RLock;
+import io.github.tuannh982.phantom.db.index.offheap.OffHeapInMemoryIndex;
 import io.github.tuannh982.phantom.db.internal.file.Record;
 import io.github.tuannh982.phantom.db.internal.file.TombstoneFile;
 import io.github.tuannh982.phantom.db.internal.file.TombstoneFileEntry;
@@ -61,7 +62,7 @@ public class PhantomDBInternal implements Closeable {
         RLock writeLock = new RLock();
         log.info("Building data files map...");
         // index
-        IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
+        IndexMap indexMap = new OffHeapInMemoryIndex(16, 8, 4 * 1024 * 1024); // FIXME Just for testing purpose
         Map.Entry<NavigableMap<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 0);
         // max data file id (for tombstone compaction)
         int maxDataFileId = dataFileMapReturn.getValue();

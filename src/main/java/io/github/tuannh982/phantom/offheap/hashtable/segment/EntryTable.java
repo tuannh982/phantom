@@ -26,6 +26,7 @@ public class EntryTable implements Closeable {
         int size = hashTableSize * Address.SERIALIZED_SIZE;
         long address = UnsafeWrapper.malloc(size);
         int mask = hashTableSize - 1;
+        UnsafeWrapper.memset(address, 0, size, (byte)0xff); // set all to null address
         return new EntryTable(hashTableSize, address, mask);
     }
 
