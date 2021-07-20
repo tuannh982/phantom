@@ -17,6 +17,7 @@ public class Segment<V> implements Closeable {
     private final int memoryChunkSize;
     private final ValueSerializer<V> valueSerializer;
     private final int entryTableSizePerSegment;
+    private final int entrySize;
     // lock
     private final RLock lock;
     //
@@ -32,6 +33,7 @@ public class Segment<V> implements Closeable {
         this.memoryChunkSize = memoryChunkSize;
         this.valueSerializer = valueSerializer;
         this.entryTableSizePerSegment = entryTableSizePerSegment;
+        this.entrySize = Address.SERIALIZED_SIZE + 1 + maxKeySize + fixedValueSize; // address(6), key_size(1), max_key_size, fixed_value_size
         this.lock = new RLock();
         //
         this.entryTable = EntryTable.allocate(entryTableSizePerSegment);
@@ -58,27 +60,86 @@ public class Segment<V> implements Closeable {
     }
 
     public void put(KeyBuffer keyBuffer, V value) throws IOException {
+        byte[] serializedValue = valueSerializer.serialize(value).array();
         boolean rlock = lock.lock();
         try {
-            // TODO
+            Address address = entryTable.getEntry(keyBuffer.hash());
+            Address entryTableEntry = address;
+            while (!address.isNullAddress()) {
+                Chunk chunk = chunks.get(address.getChunkIndex());
+                if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
+                    chunk.setValue(address.getChunkOffset(), serializedValue);
+                }
+                address = chunk.getNextAddress(address.getChunkOffset());
+            }
+            write(keyBuffer.hash(), keyBuffer.buffer(), serializedValue, entryTableEntry);
         } finally {
             lock.release(rlock);
         }
     }
 
-    public V putIfAbsent(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
+    public V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException {
+        byte[] serializedValue = valueSerializer.serialize(value).array();
         boolean rlock = lock.lock();
         try {
-            // TODO
+            Address address = entryTable.getEntry(keyBuffer.hash());
+            Address entryTableEntry = address;
+            while (!address.isNullAddress()) {
+                Chunk chunk = chunks.get(address.getChunkIndex());
+                if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) {
+                    return valueSerializer.deserialize(chunk.readValue(address.getChunkOffset()));
+                }
+                address = chunk.getNextAddress(address.getChunkOffset());
+            }
+            write(keyBuffer.hash(), keyBuffer.buffer(), serializedValue, entryTableEntry);
+            return null;
         } finally {
             lock.release(rlock);
         }
     }
 
-    public boolean replace(KeyBuffer keyBuffer, V value) throws IOException {
+    private void write(long hash, byte[] key, byte[] value, Address entryTableEntry) {
+        Address newHeadAddress = null;
+        if (freeList.size() > 0) {
+            Address freeAddress = freeList.poll();
+            chunks.get(freeAddress.getChunkIndex()).writeEntry(key, value, entryTableEntry);
+            newHeadAddress = freeAddress;
+        } else {
+            if (currentChunkIndex == -1 || chunks.get(currentChunkIndex).remaining() < entrySize) {
+                // rollover new chunk
+                if (chunks.size() > Short.MAX_VALUE) {
+                    throw new OutOfMemoryError();
+                }
+                chunks.add(Chunk.allocate(maxKeySize, fixedValueSize, memoryChunkSize));
+                currentChunkIndex++;
+            }
+            Chunk currentChunk = chunks.get(currentChunkIndex);
+            Address newAddress = new Address((short) currentChunkIndex, currentChunk.getWriteOffset());
+            currentChunk.writeEntry(key, value, entryTableEntry);
+            newHeadAddress = newAddress;
+        }
+        entryTable.setEntry(hash, newHeadAddress);
+    }
+
+    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
+        byte[] serializedOldValue = valueSerializer.serialize(oldValue).array();
+        byte[] serializedNewValue = valueSerializer.serialize(newValue).array();
         boolean rlock = lock.lock();
         try {
-            // TODO
+            Address address = entryTable.getEntry(keyBuffer.hash());
+            while (!address.isNullAddress()) {
+                Chunk chunk = chunks.get(address.getChunkIndex());
+                if (chunk.compareKey(address.getChunkOffset(), keyBuffer.buffer())) { // found key
+                    if (chunk.compareValue(address.getChunkOffset(), serializedOldValue)) { // value match provided value
+                        chunk.setValue(address.getChunkOffset(), serializedNewValue);
+                        return true;
+                    } else { // not match
+                        return false;
+                    }
+                }
+                address = chunk.getNextAddress(address.getChunkOffset());
+            }
+            return false;
         } finally {
             lock.release(rlock);
         }

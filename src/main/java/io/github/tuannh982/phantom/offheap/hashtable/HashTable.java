@@ -6,7 +6,7 @@ import java.io.IOException;
 public interface HashTable<V> extends Closeable {
     V get(KeyBuffer keyBuffer) throws IOException;
     void put(KeyBuffer keyBuffer, V value) throws IOException;
-    V putIfAbsent(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException;
-    boolean replace(KeyBuffer keyBuffer, V value) throws IOException;
+    V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException;
+    boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException;
     void delete(KeyBuffer keyBuffer) throws IOException;
 }

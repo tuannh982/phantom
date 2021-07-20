@@ -58,13 +58,13 @@ public class OffHeapHashTable<V> implements HashTable<V> {
     }
 
     @Override
-    public V putIfAbsent(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
-        return getSegment(keyBuffer.hash()).putIfAbsent(keyBuffer, oldValue, newValue);
+    public V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException {
+        return getSegment(keyBuffer.hash()).putIfAbsent(keyBuffer, value);
     }
 
     @Override
-    public boolean replace(KeyBuffer keyBuffer, V value) throws IOException {
-        return getSegment(keyBuffer.hash()).replace(keyBuffer, value);
+    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
+        return getSegment(keyBuffer.hash()).replace(keyBuffer, oldValue, newValue);
     }
 
     @Override
