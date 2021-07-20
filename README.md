@@ -1,13 +1,25 @@
 # Phantom
 
-- Simple K-V storage
-- High speed
-- No range scan support
-- inspired by HaloDB
+## Introduction
+Phantom is an embedded key-value store, provides extreme high write throughput while maintains low latency data access.
+
+Phantom was inspired by HaloDB, the name "Phantom" (belongs to the darkness) was derived from 
+the name "Halo" (belongs to the light) from HaloDB.
+
+The design principles of Phantom is old and simple. It uses log-structured data files and hash index (like HaloDB) to 
+achieve the high write workload yet still maintain low latency access with the cost of no range scan support.
+
+Moreover, Phantom has some native features supported such as transaction support and data replication which 
+some of the other embedded databases do not have such as RocksDB or LevelDB.
 
 ## TODOs
-- Implement offheap hashtable
 - Testing
+  - Unit test
+  - Performance test
+  - Benchmark report
+- Guide
+  - Tuning guide
+  - Development guide
 - Transaction manager
 - Support distributed mode
     - WAL

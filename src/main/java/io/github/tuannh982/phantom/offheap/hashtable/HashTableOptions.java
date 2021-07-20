@@ -6,6 +6,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class HashTableOptions<V> {
+    private final int segmentCount;
     private final int memoryChunkSize;
     private final int maxKeySize;
     private final int fixedValueSize;

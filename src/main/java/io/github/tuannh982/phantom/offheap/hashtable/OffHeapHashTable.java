@@ -23,7 +23,7 @@ public class OffHeapHashTable<V> implements HashTable<V> {
 
     public OffHeapHashTable(HashTableOptions<V> options) {
         this.options = options;
-        segmentCount = NumberUtils.roundUpToPowerOf2(2 * Runtime.getRuntime().availableProcessors());
+        segmentCount = options.getSegmentCount();
         if (!NumberUtils.isPowerOf2(segmentCount)) {
             throw new IllegalStateException("segment count must be power of 2");
         }
@@ -68,7 +68,7 @@ public class OffHeapHashTable<V> implements HashTable<V> {
     }
 
     @Override
-    public void delete(KeyBuffer keyBuffer) throws IOException {
+    public void remove(KeyBuffer keyBuffer) throws IOException {
         getSegment(keyBuffer.hash()).delete(keyBuffer);
     }
 

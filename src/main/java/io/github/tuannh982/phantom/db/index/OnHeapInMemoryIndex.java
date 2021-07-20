@@ -43,13 +43,13 @@ public class OnHeapInMemoryIndex implements IndexMap {
     }
 
     @Override
-    public void put(byte[] key, IndexMetadata metaData) {
-        map.put(ByteArrayWrapper.of(key), metaData);
+    public void put(byte[] key, IndexMetadata metadata) {
+        map.put(ByteArrayWrapper.of(key), metadata);
     }
 
     @Override
-    public IndexMetadata putIfAbsent(byte[] key, IndexMetadata metaData) {
-        return map.putIfAbsent(ByteArrayWrapper.of(key), metaData);
+    public IndexMetadata putIfAbsent(byte[] key, IndexMetadata metadata) {
+        return map.putIfAbsent(ByteArrayWrapper.of(key), metadata);
     }
 
     @Override

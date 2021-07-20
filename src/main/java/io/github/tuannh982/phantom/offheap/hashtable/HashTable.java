@@ -8,5 +8,5 @@ public interface HashTable<V> extends Closeable {
     void put(KeyBuffer keyBuffer, V value) throws IOException;
     V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException;
     boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException;
-    void delete(KeyBuffer keyBuffer) throws IOException;
+    void remove(KeyBuffer keyBuffer) throws IOException;
 }

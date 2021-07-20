@@ -398,7 +398,6 @@ public class PhantomDBInternal implements Closeable {
             dbMetadata.setOpen(false);
             dbMetadata.setIoError(false);
             dbMetadata.save(dbDirectory);
-            // TODO impl
         } finally {
             writeLock.release(rlock);
         }

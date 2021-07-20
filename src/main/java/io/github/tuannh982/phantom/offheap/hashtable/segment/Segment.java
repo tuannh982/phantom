@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@SuppressWarnings("java:S1068")
 public class Segment<V> implements Closeable {
     // primary
     private final int maxKeySize;
