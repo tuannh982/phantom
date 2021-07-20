@@ -59,6 +59,12 @@ boolean success = db.replace(key, value);
 byte[] key = new byte[] {...};
 db.delete(key);
 ```
+
+### Close DB instance
+```java
+db.close();
+```
+
 ## TODOs
 - Testing
   - Unit test
