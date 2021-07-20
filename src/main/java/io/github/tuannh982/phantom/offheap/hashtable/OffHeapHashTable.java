@@ -48,27 +48,27 @@ public class OffHeapHashTable<V> implements HashTable<V> {
     }
 
     @Override
-    public V get(KeyBuffer keyBuffer) throws IOException {
+    public V get(KeyBuffer keyBuffer) {
         return getSegment(keyBuffer.hash()).get(keyBuffer);
     }
 
     @Override
-    public void put(KeyBuffer keyBuffer, V value) throws IOException {
+    public void put(KeyBuffer keyBuffer, V value) {
         getSegment(keyBuffer.hash()).put(keyBuffer, value);
     }
 
     @Override
-    public V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException {
+    public V putIfAbsent(KeyBuffer keyBuffer, V value) {
         return getSegment(keyBuffer.hash()).putIfAbsent(keyBuffer, value);
     }
 
     @Override
-    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
+    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) {
         return getSegment(keyBuffer.hash()).replace(keyBuffer, oldValue, newValue);
     }
 
     @Override
-    public void remove(KeyBuffer keyBuffer) throws IOException {
+    public void remove(KeyBuffer keyBuffer) {
         getSegment(keyBuffer.hash()).delete(keyBuffer);
     }
 

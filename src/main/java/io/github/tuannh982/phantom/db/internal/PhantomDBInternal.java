@@ -62,8 +62,16 @@ public class PhantomDBInternal implements Closeable {
         RLock writeLock = new RLock();
         log.info("Building data files map...");
         // index
-        IndexMap indexMap = new OffHeapInMemoryIndex(16, 8, 4 * 1024 * 1024); // FIXME
-        // IndexMap indexMap = new OnHeapInMemoryIndex(); // FIXME Just for testing purpose
+        IndexMap indexMap = null;
+        if (options.isOffHeapHashTable()) {
+            indexMap = new OffHeapInMemoryIndex(
+                    options.getEstimatedMaxKeyCount(),
+                    options.getMaxKeySize(),
+                    options.getMemoryChunkSize()
+            );
+        } else {
+            indexMap = new OnHeapInMemoryIndex();
+        }
         Map.Entry<NavigableMap<Integer, DBFile>, Integer> dataFileMapReturn = DirectoryUtils.buildDataFileMap(dbDirectory, options, 0);
         // max data file id (for tombstone compaction)
         int maxDataFileId = dataFileMapReturn.getValue();

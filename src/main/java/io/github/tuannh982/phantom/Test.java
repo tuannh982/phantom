@@ -20,7 +20,7 @@ public class Test {
                          .numberOfIndexingThread(Runtime.getRuntime().availableProcessors())
                          .compactionThreshold(0.5f)
                          .dataFlushThreshold(8 * 1024 * 1024)
-                         .fixedKeySize(16)
+                         .maxKeySize(16)
                          .maxFileSize(32 * 1024 * 1024)
                          .maxTombstoneFileSize(8 * 1024 * 1024)
                          .build()

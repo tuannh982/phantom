@@ -4,9 +4,9 @@ import java.io.Closeable;
 import java.io.IOException;
 
 public interface HashTable<V> extends Closeable {
-    V get(KeyBuffer keyBuffer) throws IOException;
-    void put(KeyBuffer keyBuffer, V value) throws IOException;
-    V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException;
-    boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException;
-    void remove(KeyBuffer keyBuffer) throws IOException;
+    V get(KeyBuffer keyBuffer);
+    void put(KeyBuffer keyBuffer, V value);
+    V putIfAbsent(KeyBuffer keyBuffer, V value);
+    boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue);
+    void remove(KeyBuffer keyBuffer);
 }

@@ -43,7 +43,7 @@ public class Segment<V> implements Closeable {
         this.freeList = new FreeList();
     }
 
-    public V get(KeyBuffer keyBuffer) throws IOException {
+    public V get(KeyBuffer keyBuffer) {
         boolean rlock = lock.lock();
         try {
             Address address = entryTable.getEntry(keyBuffer.hash());
@@ -60,7 +60,7 @@ public class Segment<V> implements Closeable {
         }
     }
 
-    public void put(KeyBuffer keyBuffer, V value) throws IOException {
+    public void put(KeyBuffer keyBuffer, V value) {
         byte[] serializedValue = valueSerializer.serialize(value).array();
         boolean rlock = lock.lock();
         try {
@@ -80,7 +80,7 @@ public class Segment<V> implements Closeable {
         }
     }
 
-    public V putIfAbsent(KeyBuffer keyBuffer, V value) throws IOException {
+    public V putIfAbsent(KeyBuffer keyBuffer, V value) {
         byte[] serializedValue = valueSerializer.serialize(value).array();
         boolean rlock = lock.lock();
         try {
@@ -123,7 +123,7 @@ public class Segment<V> implements Closeable {
         entryTable.setEntry(hash, newHeadAddress);
     }
 
-    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) throws IOException {
+    public boolean replace(KeyBuffer keyBuffer, V oldValue, V newValue) {
         byte[] serializedOldValue = valueSerializer.serialize(oldValue).array();
         byte[] serializedNewValue = valueSerializer.serialize(newValue).array();
         boolean rlock = lock.lock();
@@ -147,7 +147,7 @@ public class Segment<V> implements Closeable {
         }
     }
 
-    public void delete(KeyBuffer keyBuffer) throws IOException {
+    public void delete(KeyBuffer keyBuffer) {
         boolean rlock = lock.lock();
         try {
             Address previousAddress = null;
