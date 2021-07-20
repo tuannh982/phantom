@@ -100,7 +100,7 @@ public class Segment<V> implements Closeable {
         }
     }
 
-    private void write(long hash, byte[] key, byte[] value, Address entryTableEntry) { // TODO investigate later
+    private void write(long hash, byte[] key, byte[] value, Address entryTableEntry) {
         Address newHeadAddress = null;
         if (freeList.size() > 0) {
             Address freeAddress = freeList.poll();

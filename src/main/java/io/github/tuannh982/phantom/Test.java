@@ -29,6 +29,9 @@ public class Test {
          byte[] key = new byte[] {1,2,3,4};
          byte[] tempValue = null;
          long start = System.currentTimeMillis();
+         long putCount = 0;
+         long delCount = 0;
+         long readCount = 0;
          for (int i = 0; i < 5_000_000; i++) {
              if (i % 500_000 == 0) {
                  System.out.println("iteration = " + i);
@@ -39,11 +42,14 @@ public class Test {
                  random.nextBytes(r);
                  db.put(key, r);
                  tempValue = r;
+                 putCount++;
              } else {
                  db.delete(key);
                  tempValue = null;
+                 delCount++;
              }
              byte[] read = db.get(key);
+             readCount++;
              if (!Arrays.equals(read, tempValue)) {
                  System.out.println(
                          String.format(
@@ -57,9 +63,20 @@ public class Test {
              }
          }
          // done
-         System.out.println(Arrays.toString(tempValue));
          long stop = System.currentTimeMillis();
-         System.out.println("elapsed time = " + (double)(stop - start) / 1000 + " seconds");
+         System.out.println(Arrays.toString(tempValue));
          db.close();
+         double timeInSeconds = (double)(stop - start) / 1000;
+         long totalOpCount = readCount + putCount + delCount;
+         System.out.println("Single thread test, 80% put, 20% delete, read after put or delete");
+         System.out.println(String.format("elapsed time = %.4f, total operations = %d, ops = %.4f",
+                 timeInSeconds, totalOpCount, (double)totalOpCount / timeInSeconds)
+         );
+         System.out.println(String.format("read count = %d, put count = %d, delete count = %d",
+                 readCount, putCount, delCount)
+         );
+         System.out.println(String.format("read/s = %.4f, put/s = %.4f, delete/s = %.4f",
+                 (double)readCount/timeInSeconds, (double)putCount/timeInSeconds, (double)delCount/timeInSeconds)
+         );
      }
 }
