@@ -6,7 +6,7 @@
 
     <groupId>io.github.tuannh982</groupId>
     <artifactId>phantom</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A fast, simple embedded key-value store</description>
     <url>https://github.com/tuannh982/phantom</url>
@@ -120,6 +120,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
             </plugin>
         </plugins>
     </build>
