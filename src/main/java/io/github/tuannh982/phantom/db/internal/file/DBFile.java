@@ -115,6 +115,7 @@ public class DBFile implements Closeable {
         if (channel != null && channel.isOpen()) {
             channel.force(true);
         }
+        indexFile.flushToDisk();
     }
 
     public void flush() throws IOException {

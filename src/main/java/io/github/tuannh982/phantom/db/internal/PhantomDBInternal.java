@@ -325,7 +325,7 @@ public class PhantomDBInternal implements Closeable {
             }
             dbDirectory.sync();
         } else if (currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
-            currentDBFile.close();
+            currentDBFile.flushToDisk();
             currentDBFile = createNewDBFile();
             if (currentTombstoneFile != null) {
                 tombstoneLastAssociateDataFileMap.put(currentTombstoneFile.getFileId(), currentDBFile.getFileId());
@@ -396,13 +396,16 @@ public class PhantomDBInternal implements Closeable {
     public void close() throws IOException {
         boolean rlock = writeLock.lock();
         try {
+            compactionManager.close();
             if (currentDBFile != null) {
                 currentDBFile.close();
             }
             if (currentTombstoneFile != null) {
                 currentTombstoneFile.close();
             }
-            compactionManager.close();
+            for (DBFile dbFile : dataFileMap.values()) {
+                dbFile.close();
+            }
             dbDirectory.close();
             dbMetadata.setOpen(false);
             dbMetadata.setIoError(false);
