@@ -152,11 +152,11 @@ public class IndexFile implements Closeable {
                 try {
                     ByteBuffer headerBuffer = ByteBuffer.allocate(IndexFileEntry.HEADER_SIZE);
                     // offset += FileUtils.read(iterChannel, offset, headerBuffer);
-                    offset += channel.read(headerBuffer);
+                    offset += iterChannel.read(headerBuffer);
                     IndexFileEntry.Header header = IndexFileEntry.Header.deserialize(headerBuffer);
                     ByteBuffer dataBuffer = ByteBuffer.allocate(header.getKeySize());
                     // offset += FileUtils.read(iterChannel, offset, dataBuffer);
-                    offset += channel.read(dataBuffer);
+                    offset += iterChannel.read(dataBuffer);
                     IndexFileEntry entry = IndexFileEntry.deserialize(dataBuffer, header);
                     if (!entry.verifyChecksum()) {
                         throw new IOException("checksum failed");
