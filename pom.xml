@@ -6,7 +6,7 @@
 
     <groupId>io.github.tuannh982</groupId>
     <artifactId>phantom</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A fast, simple embedded key-value store</description>
     <url>https://github.com/tuannh982/phantom</url>
