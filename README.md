@@ -11,6 +11,24 @@ achieve the high write workload yet still maintain low latency access with the c
 
 ## Usage
 
+### Installation
+
+Add dependency to pom.xml (Maven)
+
+```xml
+<dependency>
+    <groupId>io.github.tuannh982</groupId>
+    <artifactId>phantom</artifactId>
+    <version>0.1.1</version>
+</dependency>
+```
+
+or build.gralde (Gradle)
+
+```groovy
+implementation group: 'io.github.tuannh982', name: 'phantom', version: '0.1.1'
+```
+
 ### Create DB instance
 ```java
 String path = "/path/to/your/db/dir";
