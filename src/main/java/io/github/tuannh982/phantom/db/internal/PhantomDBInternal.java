@@ -52,7 +52,7 @@ public class PhantomDBInternal implements Closeable {
     private long sequenceNumber;
     private int fileId;
 
-    @SuppressWarnings({"java:S3776", "java:S4042", "java:S899", "java:S2095", "ResultOfMethodCallIgnored"})
+    @SuppressWarnings({"java:S3776", "java:S4042", "java:S899", "java:S2095"})
     public static PhantomDBInternal open(File dir, PhantomDBOptions options) throws IOException, DBException {
         log.info("Initiating DBDirectory...");
         // db directory
@@ -100,7 +100,10 @@ public class PhantomDBInternal implements Closeable {
                 // no compacted tombstone should be exists, so just delete all
                 File[] compactedTombstoneFiles = DirectoryUtils.compactedTombstoneFiles(dbDirectory.file());
                 for (File file : compactedTombstoneFiles) {
-                    file.delete();
+                    boolean b = file.delete();
+                    if (!b) {
+                        log.error("fail to delete file " + file.getName());
+                    }
                 }
             }
         }

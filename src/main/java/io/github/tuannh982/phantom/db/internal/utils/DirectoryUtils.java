@@ -8,6 +8,7 @@ import io.github.tuannh982.phantom.db.internal.PhantomDBOptions;
 import io.github.tuannh982.phantom.db.internal.file.DBFile;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DirectoryUtils {
     public static final Pattern DATA_FILE_PATTERN = Pattern.compile("^([0-9]+)\\.datac?$");
@@ -105,13 +107,16 @@ public class DirectoryUtils {
         return new AbstractMap.SimpleImmutableEntry<>(dbFileMap, maxFileId);
     }
 
-    @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
+    @SuppressWarnings({"java:S4042", "java:S899"})
     public static void deleteOrphanedIndexFiles(Map<Integer, DBFile> dataFileMap, DBDirectory dbDirectory) {
         File[] indexFiles = dbDirectory.indexFiles();
         for (File file : indexFiles) {
             int fileId = fileId(file, INDEX_FILE_PATTERN);
             if (!dataFileMap.containsKey(fileId)) {
-                file.delete();
+                boolean b = file.delete();
+                if (!b) {
+                    log.error("fail to delete file " + file.getName());
+                }
             }
         }
     }

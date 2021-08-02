@@ -126,7 +126,10 @@ public class TombstoneFile implements Closeable {
     @SuppressWarnings({"java:S4042", "java:S899"})
     public void delete() {
         if (file != null) {
-            file.delete();
+            boolean b = file.delete();
+            if (!b) {
+                log.error("fail to delete file " + file.getName());
+            }
         }
     }
 
