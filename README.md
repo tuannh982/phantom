@@ -91,7 +91,6 @@ db.close();
 - Guide
   - Tuning guide
   - Development guide
-- Transaction manager
 - Support distributed mode
     - WAL
     - Replication manager
