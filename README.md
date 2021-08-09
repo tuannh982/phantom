@@ -52,30 +52,47 @@ DB db = new PhantomDB(
 #### get
 ```java
 byte[] key = new byte[] {...};
-byte[] read = db.get(key);
+GetResult result = db.get(key); 
+byte[] read = result.getValue();
 ```
 #### put
 ```java
 byte[] key = new byte[] {...};
 byte[] value = new byte[] {...};
-boolean success = db.put(key, value);
+ModifyResult result = db.put(key, value);
+boolean success = result.isSuccess();
 ```
 #### putIfAbsent
 ```java
 byte[] key = new byte[] {...};
 byte[] value = new byte[] {...};
-boolean success = db.putIfAbsent(key, value);
+ModifyResult result = db.putIfAbsent(key, value);
+boolean success = result.isSuccess();
 ```
 #### replace
 ```java
 byte[] key = new byte[] {...};
 byte[] value = new byte[] {...};
-boolean success = db.replace(key, value);
+ModifyResult result = db.replace(key, value);
+boolean success = result.isSuccess();
 ```
 #### delete
 ```java
 byte[] key = new byte[] {...};
-db.delete(key);
+ModifyResult result = db.delete(key, value);
+boolean success = result.isSuccess();
+```
+
+#### advanced write operation
+```java
+byte[] key = new byte[] {...};
+WriteOps ops = WriteOps.PUT;
+WritePolicy policy = WritePolicy.builder()
+        .sequenceNumberPolicy(WritePolicy.SequenceNumberPolicy.NONE)
+        .recordExistsAction(WritePolicy.RecordExistsAction.CREATE_ONLY)
+        .build();
+ModifyResult result = db.write(ops, policy, key, value);
+boolean success = result.isSuccess();
 ```
 
 ### Close DB instance

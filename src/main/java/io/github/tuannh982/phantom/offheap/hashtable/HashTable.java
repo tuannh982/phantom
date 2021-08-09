@@ -1,7 +1,6 @@
 package io.github.tuannh982.phantom.offheap.hashtable;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 public interface HashTable<V> extends Closeable {
     V get(KeyBuffer keyBuffer);

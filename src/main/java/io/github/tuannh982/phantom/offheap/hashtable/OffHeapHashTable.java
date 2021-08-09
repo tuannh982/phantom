@@ -37,7 +37,7 @@ public class OffHeapHashTable<V> implements HashTable<V> {
                     options.getEntryTableSizePerSegment()
             ));
         }
-        segmentBitCount = NumberUtils.bitCount((long) segmentCount);
+        segmentBitCount = NumberUtils.bitCount(segmentCount);
         segmentBitShift = OSConstants.WORD_SIZE_AS_BIT - segmentBitCount;
         segmentBitMask = ((long) segmentCount - 1) << segmentBitShift;
     }

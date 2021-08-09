@@ -1,6 +1,8 @@
 package io.github.tuannh982.phantom.db.internal;
 
 import io.github.tuannh982.phantom.commons.concurrent.RLock;
+import io.github.tuannh982.phantom.db.command.GetResult;
+import io.github.tuannh982.phantom.db.command.ModifyResult;
 import io.github.tuannh982.phantom.db.index.offheap.OffHeapInMemoryIndex;
 import io.github.tuannh982.phantom.db.internal.file.Record;
 import io.github.tuannh982.phantom.db.internal.file.TombstoneFile;
@@ -212,82 +214,136 @@ public class PhantomDBInternal implements Closeable {
     }
 
     @SuppressWarnings("java:S1168") // no result return null, not empty array
-    public byte[] get(byte[] key) throws IOException {
+    public GetResult get(byte[] key) throws IOException {
         IndexMetadata metadata = indexMap.get(key);
         if (metadata == null) {
-            return null;
+            return GetResult.NULL;
         } else {
             DBFile file = dataFileMap.get(metadata.getFileId());
             if (file == null) {
-                return null;
+                return GetResult.NULL;
             } else {
-                return file.read(metadata.getValueOffset(), metadata.getValueSize());
+                byte[] readValue = file.read(metadata.getValueOffset(), metadata.getValueSize());
+                return new GetResult(readValue, metadata.getSequenceNumber());
             }
         }
     }
 
-    public boolean put(byte[] key, byte[] value) throws IOException {
+    public ModifyResult put(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             Record entry = new Record(key, value);
-            entry.getHeader().setSequenceNumber(nextSequenceNumber());
+            long toBeWrittenSequenceNumber = nextSequenceNumber();
+            entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
             IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
             indexMap.put(key, indexMetadata);
-            return true;
+            return new ModifyResult(true, toBeWrittenSequenceNumber);
         } finally {
             writeLock.release(rlock);
         }
     }
 
-    public boolean putIfAbsent(byte[] key, byte[] value) throws IOException {
+    public ModifyResult putIfAbsent(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata metadata = indexMap.get(key);
             if (metadata == null) {
                 Record entry = new Record(key, value);
-                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                long toBeWrittenSequenceNumber = nextSequenceNumber();
+                entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
                 indexMap.putIfAbsent(key, indexMetadata);
-                return true;
+                return new ModifyResult(true, toBeWrittenSequenceNumber);
             } else {
-                return false; // already exists
+                return new ModifyResult(false, metadata.getSequenceNumber()); // already exists
             }
         } finally {
             writeLock.release(rlock);
         }
     }
 
-    public boolean replace(byte[] key, byte[] value) throws IOException {
+    public ModifyResult replace(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata existedMetadata = indexMap.get(key);
             if (existedMetadata == null) {
-                return false; // not exists
+                return ModifyResult.FAILED; // not exists
             } else {
                 Record entry = new Record(key, value);
-                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                long toBeWrittenSequenceNumber = nextSequenceNumber();
+                entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
                 IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
                 indexMap.replace(key, existedMetadata, indexMetadata);
                 // mark previous version as stale data
                 markDataAsStale(key, existedMetadata);
-                return true;
+                return new ModifyResult(true, toBeWrittenSequenceNumber);
             }
         } finally {
             writeLock.release(rlock);
         }
     }
 
-    public void delete(byte[] key) throws IOException {
+    // for read-modify-write pattern
+    public ModifyResult replaceWithSequenceNumberEquals(byte[] key, byte[] value, long sequenceNumber) throws IOException {
+        boolean rlock = writeLock.lock();
+        try {
+            IndexMetadata existedMetadata = indexMap.get(key);
+            if (existedMetadata == null) {
+                return ModifyResult.FAILED; // not exists
+            } else if (existedMetadata.getSequenceNumber() != sequenceNumber) {
+                return new ModifyResult(false, existedMetadata.getSequenceNumber()); // sequence number not matched
+            } else {
+                Record entry = new Record(key, value);
+                long toBeWrittenSequenceNumber = nextSequenceNumber();
+                entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
+                IndexMetadata indexMetadata = writeToCurrentDBFile(entry);
+                indexMap.replace(key, existedMetadata, indexMetadata);
+                // mark previous version as stale data
+                markDataAsStale(key, existedMetadata);
+                return new ModifyResult(true, toBeWrittenSequenceNumber);
+            }
+        } finally {
+            writeLock.release(rlock);
+        }
+    }
+
+    public ModifyResult delete(byte[] key) throws IOException {
         boolean rlock = writeLock.lock();
         try {
             IndexMetadata existedMetadata = indexMap.get(key);
             if (existedMetadata != null) {
                 indexMap.delete(key);
                 TombstoneFileEntry entry = new TombstoneFileEntry(key);
-                entry.getHeader().setSequenceNumber(nextSequenceNumber());
+                long toBeWrittenSequenceNumber = nextSequenceNumber();
+                entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
                 writeToCurrentTombstoneFile(entry);
                 // mark previous version as stale data
                 markDataAsStale(key, existedMetadata);
+                return new ModifyResult(true, toBeWrittenSequenceNumber);
+            } else {
+                return ModifyResult.FAILED;
+            }
+        } finally {
+            writeLock.release(rlock);
+        }
+    }
+
+    // for read-modify-write pattern
+    public ModifyResult deleteWithSequenceNumberEquals(byte[] key, long sequenceNumber) throws IOException {
+        boolean rlock = writeLock.lock();
+        try {
+            IndexMetadata existedMetadata = indexMap.get(key);
+            if (existedMetadata != null && existedMetadata.getSequenceNumber() == sequenceNumber) {
+                indexMap.delete(key);
+                TombstoneFileEntry entry = new TombstoneFileEntry(key);
+                long toBeWrittenSequenceNumber = nextSequenceNumber();
+                entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
+                writeToCurrentTombstoneFile(entry);
+                // mark previous version as stale data
+                markDataAsStale(key, existedMetadata);
+                return new ModifyResult(true, toBeWrittenSequenceNumber);
+            } else {
+                return ModifyResult.FAILED;
             }
         } finally {
             writeLock.release(rlock);

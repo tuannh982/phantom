@@ -4,6 +4,7 @@ import io.github.tuannh982.phantom.db.DB;
 import io.github.tuannh982.phantom.db.DBException;
 import io.github.tuannh982.phantom.db.internal.PhantomDB;
 import io.github.tuannh982.phantom.db.internal.PhantomDBOptions;
+import io.github.tuannh982.phantom.db.policy.WritePolicy;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class Test {
          Random random = new Random(System.currentTimeMillis());
          byte[] key = new byte[] {1,2,3,4};
          if (true) {
-             byte[] read = db.get(key);
+             byte[] read = db.get(key).getValue();
              System.out.println(Arrays.toString(read));
              db.close();
              return;
@@ -59,7 +60,7 @@ public class Test {
                  tempValue = null;
                  delCount++;
              }
-             byte[] read = db.get(key);
+             byte[] read = db.get(key).getValue();
              readCount++;
              if (!Arrays.equals(read, tempValue)) {
                  System.out.println(
