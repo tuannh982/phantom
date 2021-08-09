@@ -11,7 +11,7 @@ achieve the high write workload yet still maintain low latency access with the c
 
 ## Usage
 
-### Installation
+### Installation (PRE-RELEASE version)
 
 Add dependency to pom.xml (Maven)
 
@@ -100,6 +100,12 @@ boolean success = result.isSuccess();
 db.close();
 ```
 
+## Notes
+
+This project still in development, so there are lots of bugs exist.
+Please don't use the pre-release version as they contain a lot of bugs, 
+use directly from master branch since it's always up-to-date and maybe contains bug fixed.
+
 ## TODOs
 - Testing
   - Unit test
@@ -109,5 +115,5 @@ db.close();
   - Tuning guide
   - Development guide
 - Support distributed mode
-    - WAL
+    - WAL (in consideration)
     - Replication manager
