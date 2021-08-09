@@ -1,9 +1,6 @@
 package io.github.tuannh982.phantom.db.index;
 
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.nio.ByteBuffer;
 
@@ -11,6 +8,7 @@ import java.nio.ByteBuffer;
 @AllArgsConstructor
 @Getter
 @Setter
+@ToString
 public class IndexMetadata {
     public static final int METADATA_SIZE = 4 + 4 + 4 + 8; // file_id(4), value_offset(4), value_size(4), sequence_number(8)
     public static final int FILE_ID_OFFSET = 0;

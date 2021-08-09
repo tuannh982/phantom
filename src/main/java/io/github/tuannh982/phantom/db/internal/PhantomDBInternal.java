@@ -48,6 +48,7 @@ public class PhantomDBInternal implements Closeable {
     // compaction
     @Getter
     private final CompactionManager compactionManager;
+    private boolean currentDBFileWillBeCompactedLater = false;
     // lock
     private final RLock writeLock;
     //
@@ -232,6 +233,11 @@ public class PhantomDBInternal implements Closeable {
     public ModifyResult put(byte[] key, byte[] value) throws IOException {
         boolean rlock = writeLock.lock();
         try {
+            IndexMetadata existedMetadata = indexMap.get(key);
+            if (existedMetadata != null) {
+                // mark previous version as stale data
+                markDataAsStale(key, existedMetadata);
+            }
             Record entry = new Record(key, value);
             long toBeWrittenSequenceNumber = nextSequenceNumber();
             entry.getHeader().setSequenceNumber(toBeWrittenSequenceNumber);
@@ -385,6 +391,10 @@ public class PhantomDBInternal implements Closeable {
             dbDirectory.sync();
         } else if (currentDBFile.getWriteOffset() + entry.serializedSize() > options.getMaxFileSize()) {
             currentDBFile.flushToDisk();
+            if (currentDBFileWillBeCompactedLater) {
+                compactionManager.queueForCompaction(currentDBFile);
+                currentDBFileWillBeCompactedLater = false;
+            }
             currentDBFile = createNewDBFile();
             if (currentTombstoneFile != null) {
                 tombstoneLastAssociateDataFileMap.put(currentTombstoneFile.getFileId(), currentDBFile.getFileId());
@@ -415,7 +425,11 @@ public class PhantomDBInternal implements Closeable {
         if (toBeCompactedFile == null) {
             staleDataMap.remove(fileId);
         } else if (staleSize > options.getCompactionThreshold() * toBeCompactedFile.getWriteOffset()) { // write offset equals to file size
-            compactionManager.queueForCompaction(toBeCompactedFile);
+            if (fileId != currentDBFile.getFileId()) {
+                compactionManager.queueForCompaction(toBeCompactedFile);
+            } else {
+                currentDBFileWillBeCompactedLater = true;
+            }
             staleDataMap.remove(fileId);
         }
     }
@@ -424,9 +438,7 @@ public class PhantomDBInternal implements Closeable {
         int existedRecordSize = Record.HEADER_SIZE + key.length + existedMetadata.getValueSize();
         int staleSize = CompactionUtils.recordStaleData(staleDataMap, existedMetadata.getFileId(), existedRecordSize);
         int staleFileId = existedMetadata.getFileId();
-        if (staleFileId != currentDBFile.getFileId()) {
-            markDataAsStale(existedMetadata.getFileId(), staleSize);
-        }
+        markDataAsStale(staleFileId, staleSize);
     }
 
     public void markAsCompacted(int fileId) {

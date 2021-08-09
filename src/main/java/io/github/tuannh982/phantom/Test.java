@@ -31,9 +31,13 @@ public class Test {
          );
          Random random = new Random(System.currentTimeMillis());
          byte[] key = new byte[] {1,2,3,4};
-         if (true) {
+         byte[] key1 = new byte[] {1,2,3,5};
+         db.put(key1, new byte[] {1,2,3,4,5,6,7,8,9,10});
+         if (false) {
              byte[] read = db.get(key).getValue();
              System.out.println(Arrays.toString(read));
+             byte[] read1 = db.get(key1).getValue();
+             System.out.println(Arrays.toString(read1));
              db.close();
              return;
          }
@@ -43,7 +47,7 @@ public class Test {
          long delCount = 0;
          long readCount = 0;
          int putChance = 100;
-         int iterations = 500_000;
+         int iterations = 5_000_000;
          for (int i = 0; i < iterations; i++) {
              if (i % 500_000 == 0) {
                  System.out.println("iteration = " + i);
@@ -77,6 +81,8 @@ public class Test {
          // done
          long stop = System.currentTimeMillis();
          System.out.println(Arrays.toString(tempValue));
+         byte[] read1 = db.get(key1).getValue();
+         System.out.println(Arrays.toString(read1));
          db.close();
          double timeInSeconds = (double)(stop - start) / 1000;
          long totalOpCount = readCount + putCount + delCount;

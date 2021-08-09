@@ -53,7 +53,7 @@ public class OffHeapInMemoryIndex implements IndexMap {
 
     @Override
     public boolean replace(byte[] key, IndexMetadata oldValue, IndexMetadata newValue) throws IOException {
-        if (newValue.getSequenceNumber() > oldValue.getSequenceNumber()) {
+        if (newValue.getSequenceNumber() >= oldValue.getSequenceNumber()) {
             return hashTable.replace(new KeyBuffer(key, hasher), oldValue, newValue);
         } else {
             return false;
