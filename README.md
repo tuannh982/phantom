@@ -1,4 +1,9 @@
-# Phantom
+Phantom
+======
+
+[![GitHub](https://img.shields.io/github/license/tuannh982/phantom.svg)](https://github.com/tuannh982/phantom/blob/master/LICENSE)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/tuannh982/phantom.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/tuannh982/phantom/alerts)
+[![Code Quality: Java](https://img.shields.io/lgtm/grade/java/g/tuannh982/phantom.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/tuannh982/phantom/context:java)
 
 ## Introduction
 Phantom is an embedded key-value store, provides extreme high write throughput while maintains low latency data access.
